@@ -2,11 +2,11 @@
 
 Control SteamVR Lighthouse base stations (V1 & V2) via Bluetooth LE from the command line.
 
-[![Build Status](https://github.com/atomicflag/lighthouse-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/atomicflag/lighthouse-manager/actions)
+[![Rust](https://github.com/atomicflag/lighthouse-manager/actions/workflows/rust.yml/badge.svg)](https://github.com/atomicflag/lighthouse-manager/actions/workflows/rust.yml)
 [![Crates.io](https://img.shields.io/crates/v/lighthouse-manager.svg)](https://crates.io/crates/lighthouse-manager)
 [![Docs.rs](https://docs.rs/lighthouse-manager/badge.svg)](https://docs.rs/lighthouse-manager)
 [![Minimum Rust Version: 1.85](https://img.shields.io/badge/Rust-1.85+-orange.svg)](https://www.rust-lang.org/tools/install)
-[![License](https://img.shields.io/badge/license-None-blue.svg)](#license)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](#license)
 
 ---
 
@@ -176,11 +176,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
-
----
-
-## License
-
-This project is currently unlicensed. Until a license file is added, all rights are reserved.
-
-Once a license is chosen (e.g. MIT, Apache-2.0), add the corresponding `LICENSE` and/or `LICENSE-*` files to the repository root and update the `[package]` section in `Cargo.toml` with `license = "MIT OR Apache-2.0"`.
