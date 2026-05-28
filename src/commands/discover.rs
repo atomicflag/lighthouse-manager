@@ -19,57 +19,36 @@ pub async fn run(timeout_secs: u64) -> Result<()> {
     let mut db = storage::load()?;
     let new_count = storage::add_new(&mut db, &discovered);
 
-    // Try to fill in V1 IDs from existing entries and name parsing
-    for lh in &discovered {
-        // If we already have an entry in the DB, borrow its ID
-        if let Some(existing) = db.lighthouses.iter().find(|e| e.address == lh.address)
-            && existing.id.is_some()
-            && lh.id.is_none()
-        {
-            // We'll update via add_new logic instead
-        }
-    }
-
     storage::save(&db)?;
 
     info!(
-        "Discovered {} Lighthouse(s), {} new entry(ies) saved.",
-        discovered.len(),
-        new_count
+        discovered = discovered.len(),
+        new_entries = new_count,
+        "discovery complete"
     );
 
-    println!("\nLighthouses found:");
+    info!("Lighthouses found:");
     for lh in &discovered {
-        let managed_mark = if lh.managed { "[M]" } else { "   " };
+        info!(
+            name = lh.name.as_str(),
+            address = lh.address.as_str(),
+            managed = lh.managed,
+            "found"
+        );
         let id_info = match (lh.version() == LighthouseVersion::V1, &lh.id) {
-            (true, Some(id)) => format!(" (ID: {})", id),
-            (true, None) => " (⚠ missing ID - edit config)".to_string(),
+            (true, Some(id)) => format!(" V1 ID: {}", id),
+            (true, None) => " WARNING: missing V1 ID - edit config".to_string(),
             _ => String::new(),
         };
-        println!(
-            "  {} {:30} {}{}",
-            managed_mark, lh.name, lh.address, id_info
-        );
+        if !id_info.is_empty() {
+            info!(device = lh.name.as_str(), details = id_info.trim_start());
+        }
     }
 
     if new_count > 0 {
         info!("Use `lighthouse-manager list --managed` to see managed lighthouses.");
-        info!(
-            "Edit the database file to mark stations as managed: {}",
-            db_path()
-        );
+        info!("Edit the database file to mark stations as managed.");
     }
 
     Ok(())
-}
-
-fn db_path() -> String {
-    if let Some(proj) = directories::ProjectDirs::from("io", "atomicflag", "Lighthouse Manager") {
-        proj.config_local_dir()
-            .join("lighthouses.json")
-            .display()
-            .to_string()
-    } else {
-        "~/.config/lighthouse-manager/lighthouses.json".to_string()
-    }
 }

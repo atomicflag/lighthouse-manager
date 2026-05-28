@@ -1,6 +1,6 @@
 use anyhow::{Result, bail};
 use std::collections::HashSet;
-use tracing::info;
+use tracing::{error, info};
 
 use crate::bluetooth;
 use crate::lighthouse::Lighthouse;
@@ -31,7 +31,7 @@ pub(super) fn load_and_validate() -> Result<Vec<Lighthouse>> {
         .collect();
 
     if managed.is_empty() {
-        println!("No managed lighthouses found. Mark stations as managed in the database first.");
+        info!("No managed lighthouses found. Mark stations as managed in the database first.");
         return Ok(managed);
     }
 
@@ -47,15 +47,13 @@ async fn run_power_action(action: PowerAction) -> Result<()> {
     }
 
     info!(
-        "Power {:?} on {} managed lighthouse(s)...",
-        action,
-        managed.len()
+        action = ?action,
+        count = managed.len(),
+        "Power action on managed lighthouses"
     );
 
-    let expected_addresses: HashSet<String> = managed
-        .iter()
-        .map(|m| m.address.to_lowercase())
-        .collect();
+    let expected_addresses: HashSet<String> =
+        managed.iter().map(|m| m.address.to_lowercase()).collect();
 
     let adapter = bluetooth::get_adapter().await?;
 
@@ -83,7 +81,7 @@ async fn run_power_action(action: PowerAction) -> Result<()> {
     Ok(())
 }
 
-/// Spawn parallel tasks for each lighthouse, join results, and print a summary.
+/// Spawn parallel tasks for each lighthouse, join results, and report.
 async fn execute_and_report(
     adapter: &bluetooth::Adapter,
     managed: Vec<Lighthouse>,
@@ -122,19 +120,16 @@ async fn execute_and_report(
 
         match result {
             Ok(Ok(name)) => {
-                info!("✓ {}: power action complete", name);
+                info!(device = %name, "power action complete");
                 success_count += 1;
             }
             Ok(Err(e)) => {
                 error_count += 1;
-                eprintln!("  [{}]: {}", names[i], e);
+                error!(device = %names[i], error = %e, "power action failed");
             }
             Err(join_err) => {
                 error_count += 1;
-                eprintln!(
-                    "  [{}]: Task panicked or was cancelled: {}",
-                    names[i], join_err
-                );
+                error!(device = %names[i], task_error = %join_err, "task panicked or was cancelled");
             }
         }
     }
@@ -144,16 +139,17 @@ async fn execute_and_report(
         PowerAction::Sleep => "OFF",
     };
 
-    println!(
-        "\nPower {:?} complete: {} succeeded, {} failed out of {} managed lighthouse(s).",
-        action_display,
-        success_count,
-        error_count,
-        names.len()
+    info!(
+        action = ?action,
+        success = success_count,
+        failed = error_count,
+        total = names.len(),
+        power_action = action_display,
+        "power action complete"
     );
 
     if error_count > 0 {
-        anyhow::bail!("Some devices failed to respond. Check connections and IDs.");
+        bail!("Some devices failed to respond. Check connections and IDs.");
     }
 
     Ok(())

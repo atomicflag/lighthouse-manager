@@ -1,7 +1,10 @@
 use anyhow::{Result, bail};
 use tracing::info;
 
-use crate::{bluetooth::Adapter, lighthouse::{Lighthouse, LighthouseVersion}};
+use crate::{
+    bluetooth::Adapter,
+    lighthouse::{Lighthouse, LighthouseVersion},
+};
 
 /// Validate that the index refers to a V2 lighthouse and return it.
 fn validate_lighthouse(index: usize) -> Result<Lighthouse> {
@@ -40,7 +43,7 @@ pub(super) async fn send_identify_command(adapter: &Adapter, lh: &Lighthouse) ->
     {
         Ok(Ok(())) => Ok(()),
         Ok(Err(e)) => Err(e),
-        Err(_) => anyhow::bail!(
+        Err(_) => bail!(
             "Timed out while trying to identify {}. Is it powered on and nearby?",
             lh.name
         ),
@@ -74,7 +77,7 @@ pub async fn run(index: usize) -> Result<()> {
 
     send_identify_command(&adapter, &lh).await?;
 
-    info!("✓ {} should be blinking now.", lh.name);
+    info!("{} should be blinking now.", lh.name);
 
     Ok(())
 }
