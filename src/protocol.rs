@@ -1,9 +1,10 @@
 /// Protocol helpers for building Lighthouse power control commands.
 use crate::lighthouse::{Lighthouse, LighthouseVersion};
+use anyhow::{Result, anyhow};
 
 /// Build the power-on command bytes for a V1 lighthouse.
 /// Format: [0x12, 0x00, 0x00, 0x00] + reversed ID bytes (4) + [0x00; 12] = 20 bytes total.
-pub fn build_v1_power_on(id: &str) -> Result<Vec<u8>, String> {
+pub fn build_v1_power_on(id: &str) -> Result<Vec<u8>> {
     validate_v1_id(id)?;
     let id_bytes = parse_v1_id_bytes(id);
     let mut cmd = vec![0x12, 0x00, 0x00, 0x00];
@@ -16,7 +17,7 @@ pub fn build_v1_power_on(id: &str) -> Result<Vec<u8>, String> {
 
 /// Build the sleep command bytes for a V1 lighthouse.
 /// Format: [0x12, 0x02, 0x00, 0x01] + reversed ID bytes (4) + [0x00; 12] = 20 bytes total.
-pub fn build_v1_sleep(id: &str) -> Result<Vec<u8>, String> {
+pub fn build_v1_sleep(id: &str) -> Result<Vec<u8>> {
     validate_v1_id(id)?;
     let id_bytes = parse_v1_id_bytes(id);
     let mut cmd = vec![0x12, 0x02, 0x00, 0x01];
@@ -43,12 +44,12 @@ pub fn build_v2_identify() -> Vec<u8> {
 }
 
 /// Validate that an ID is exactly 8 hex characters.
-fn validate_v1_id(id: &str) -> Result<(), String> {
+fn validate_v1_id(id: &str) -> Result<()> {
     if id.len() != 8 {
-        return Err(format!("Invalid V1 ID length: {id} (expected 8 chars)"));
+        return Err(anyhow!("Invalid V1 ID length: {id} (expected 8 chars)"));
     }
     if !id.chars().all(|c| c.is_ascii_hexdigit()) {
-        return Err(format!("V1 ID contains non-hex characters: {id}"));
+        return Err(anyhow!("V1 ID contains non-hex characters: {id}"));
     }
     Ok(())
 }
@@ -58,18 +59,18 @@ fn validate_v1_id(id: &str) -> Result<(), String> {
 fn parse_v1_id_bytes(id: &str) -> Vec<u8> {
     (0..id.len())
         .step_by(2)
-        .map(|i| u8::from_str_radix(&id[i..i + 2], 16).unwrap_or(0))
+        .map(|i| u8::from_str_radix(&id[i..i + 2], 16).unwrap())
         .collect()
 }
 
 /// Build the power control command bytes for a lighthouse.
-pub fn build_power_command(lh: &Lighthouse) -> Result<Vec<u8>, String> {
+pub fn build_power_command(lh: &Lighthouse) -> Result<Vec<u8>> {
     match lh.version() {
         LighthouseVersion::V1 => {
             let id = lh
                 .id
                 .as_ref()
-                .ok_or_else(|| "V1 lighthouse missing ID for power command".to_string())?;
+                .ok_or_else(|| anyhow!("V1 lighthouse missing ID for power command"))?;
             build_v1_power_on(id)
         }
         LighthouseVersion::V2 => Ok(build_v2_power_on()),
@@ -77,13 +78,13 @@ pub fn build_power_command(lh: &Lighthouse) -> Result<Vec<u8>, String> {
 }
 
 /// Build the sleep control command bytes for a lighthouse.
-pub fn build_sleep_command(lh: &Lighthouse) -> Result<Vec<u8>, String> {
+pub fn build_sleep_command(lh: &Lighthouse) -> Result<Vec<u8>> {
     match lh.version() {
         LighthouseVersion::V1 => {
             let id = lh
                 .id
                 .as_ref()
-                .ok_or_else(|| "V1 lighthouse missing ID for sleep command".to_string())?;
+                .ok_or_else(|| anyhow!("V1 lighthouse missing ID for sleep command"))?;
             build_v1_sleep(id)
         }
         LighthouseVersion::V2 => Ok(build_v2_sleep()),
@@ -91,10 +92,10 @@ pub fn build_sleep_command(lh: &Lighthouse) -> Result<Vec<u8>, String> {
 }
 
 /// Build the identify command bytes for a lighthouse (V2 only).
-pub fn build_identify_command(lh: &Lighthouse) -> Result<Vec<u8>, String> {
+pub fn build_identify_command(lh: &Lighthouse) -> Result<Vec<u8>> {
     match lh.version() {
         LighthouseVersion::V2 => Ok(build_v2_identify()),
-        LighthouseVersion::V1 => Err("Identify is not supported on V1 lighthouses".into()),
+        LighthouseVersion::V1 => Err(anyhow!("Identify is not supported on V1 lighthouses")),
     }
 }
 

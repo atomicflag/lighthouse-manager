@@ -71,11 +71,7 @@ fn is_lighthouse_name(name: &str) -> bool {
 
 /// Get the local name from a peripheral's properties.
 async fn get_local_name(peripheral: &Peripheral) -> Option<String> {
-    let props_result = peripheral.properties().await;
-    match props_result {
-        Ok(Some(props)) => props.local_name,
-        Ok(None) | Err(_) => None,
-    }
+    peripheral.properties().await.ok()??.local_name
 }
 
 /// Connect to a specific lighthouse by its Bluetooth address.

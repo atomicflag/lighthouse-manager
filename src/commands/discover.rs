@@ -29,19 +29,14 @@ pub async fn run(timeout_secs: u64) -> Result<()> {
 
     info!("Lighthouses found:");
     for lh in &discovered {
-        info!(
-            name = lh.name.as_str(),
-            address = lh.address.as_str(),
-            managed = lh.managed,
-            "found"
-        );
+        info!(name = %lh.name, address = %lh.address, managed = lh.managed, "found");
         let id_info = match (lh.version() == LighthouseVersion::V1, &lh.id) {
             (true, Some(id)) => format!(" V1 ID: {id}"),
             (true, None) => " WARNING: missing V1 ID - edit config".to_string(),
             _ => String::new(),
         };
         if !id_info.is_empty() {
-            info!(device = lh.name.as_str(), details = id_info.trim_start());
+            info!(device = %lh.name, details = %id_info);
         }
     }
 

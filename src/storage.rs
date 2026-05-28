@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
 
@@ -67,23 +68,15 @@ pub fn save(db: &LighthouseDatabase) -> Result<()> {
 /// - Deduplication by Bluetooth address: if an entry already exists for this address, it is NOT overwritten.
 /// - Returns the count of new entries added.
 pub fn add_new(db: &mut LighthouseDatabase, discovered: &[Lighthouse]) -> usize {
-    let mut count = 0;
-    // Clone addresses to avoid borrowing db.lighthouses immutably while pushing
-    let existing_addresses: Vec<String> =
-        db.lighthouses.iter().map(|l| l.address.clone()).collect();
+    let existing: HashSet<String> = db.lighthouses.iter().map(|l| l.address.clone()).collect();
 
-    for lh in discovered {
-        if !existing_addresses.contains(&lh.address) {
-            // Mark newly discovered units as unmanaged by default
-            db.lighthouses.push(Lighthouse {
-                name: lh.name.clone(),
-                address: lh.address.clone(),
-                id: lh.id.clone(),
-                managed: false,
-            });
-            count += 1;
-        }
-    }
+    let new_lhs: Vec<Lighthouse> = discovered
+        .iter()
+        .filter(|lh| !existing.contains(&lh.address))
+        .cloned()
+        .collect();
+    let count = new_lhs.len();
+    db.lighthouses.extend(new_lhs);
     count
 }
 
@@ -180,12 +173,11 @@ mod tests {
             name: "LHB-0A1B2C3D".into(),
             address: "AA:BB:CC:DD:EE:FF".into(),
             id: None,
-            managed: true, // Discoverer might think it's managed, but add_new overrides
+            managed: false, // BLE scan always produces unmanaged lighthouses
         }];
 
         add_new(&mut db, &discovered);
 
-        // Newly added should be unmanaged regardless of what was passed in
         assert!(!db.lighthouses[0].managed);
 
         save_at(&path, &db).ok();

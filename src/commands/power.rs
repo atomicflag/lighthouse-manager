@@ -16,7 +16,7 @@ pub async fn power_off() -> Result<()> {
     run_power_action(PowerAction::Sleep).await
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 enum PowerAction {
     PowerOn,
     Sleep,
@@ -87,49 +87,38 @@ async fn execute_and_report(
     managed: Vec<Lighthouse>,
     action: PowerAction,
 ) -> Result<()> {
-    let names: Vec<String> = managed.iter().map(|m| m.name.clone()).collect();
-
     let mut tasks = Vec::new();
 
     for lh in &managed {
         let adapter_clone = adapter.clone();
-        let name = lh.name.clone();
-        let action_clone = action.clone();
         let lh_for_task = lh.clone();
 
-        let task = tokio::spawn(async move {
-            match action_clone {
-                PowerAction::PowerOn => send_power_on(&adapter_clone, &lh_for_task).await,
-                PowerAction::Sleep => send_sleep(&adapter_clone, &lh_for_task).await,
-            }
-            .map(|()| name.clone())
-        });
+        let task =
+            tokio::spawn(async move { send_action(&adapter_clone, &lh_for_task, action).await });
 
         tasks.push(task);
     }
 
     let results = futures::future::join_all(tasks).await;
 
-    let mut success_count = 0;
     let mut error_count = 0;
 
     for (i, result) in results.into_iter().enumerate() {
-        if i >= names.len() {
+        if i >= managed.len() {
             continue;
         }
 
         match result {
-            Ok(Ok(name)) => {
-                info!(device = %name, "power action complete");
-                success_count += 1;
+            Ok(Ok(())) => {
+                info!(device = %managed[i].name, "power action complete");
             }
             Ok(Err(e)) => {
                 error_count += 1;
-                error!(device = %names[i], error = %e, "power action failed");
+                error!(device = %managed[i].name, error = %e, "power action failed");
             }
             Err(join_err) => {
                 error_count += 1;
-                error!(device = %names[i], task_error = %join_err, "task panicked or was cancelled");
+                error!(device = %managed[i].name, task_error = %join_err, "task panicked or was cancelled");
             }
         }
     }
@@ -141,9 +130,9 @@ async fn execute_and_report(
 
     info!(
         action = ?action,
-        success = success_count,
+        success = managed.len() - error_count,
         failed = error_count,
-        total = names.len(),
+        total = managed.len(),
         power_action = action_display,
         "power action complete"
     );
@@ -155,18 +144,17 @@ async fn execute_and_report(
     Ok(())
 }
 
-/// Connect to a single lighthouse and send power-on command based on version.
-async fn send_power_on(adapter: &crate::bluetooth::Adapter, lh: &Lighthouse) -> Result<()> {
+/// Connect to a single lighthouse and send the specified power action.
+async fn send_action(
+    adapter: &crate::bluetooth::Adapter,
+    lh: &Lighthouse,
+    action: PowerAction,
+) -> Result<()> {
     let conn = crate::bluetooth::connect_lighthouse(adapter, &lh.address).await?;
-    conn.power_on(lh).await?;
-    conn.disconnect().await;
-    Ok(())
-}
-
-/// Connect to a single lighthouse and send sleep command based on version.
-async fn send_sleep(adapter: &crate::bluetooth::Adapter, lh: &Lighthouse) -> Result<()> {
-    let conn = crate::bluetooth::connect_lighthouse(adapter, &lh.address).await?;
-    conn.sleep(lh).await?;
+    match action {
+        PowerAction::PowerOn => conn.power_on(lh).await?,
+        PowerAction::Sleep => conn.sleep(lh).await?,
+    }
     conn.disconnect().await;
     Ok(())
 }

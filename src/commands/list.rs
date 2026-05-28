@@ -1,7 +1,6 @@
 use anyhow::Result;
 use tracing::{debug, info};
 
-use crate::lighthouse::Lighthouse;
 use crate::storage;
 
 /// List all known lighthouses or only managed ones.
@@ -15,12 +14,11 @@ pub fn run(managed_only: bool, json_output: bool) -> Result<()> {
         return Ok(());
     }
 
-    let all: Vec<&Lighthouse> = db.lighthouses.iter().collect();
-    let filtered: Vec<&Lighthouse> = if managed_only {
-        all.into_iter().filter(|l| l.managed).collect()
-    } else {
-        all
-    };
+    let filtered: Vec<_> = db
+        .lighthouses
+        .iter()
+        .filter(|l| !managed_only || l.managed)
+        .collect();
 
     if filtered.is_empty() {
         if managed_only {
@@ -38,16 +36,9 @@ pub fn run(managed_only: bool, json_output: bool) -> Result<()> {
 
     info!("Known lighthouses ({}):", filtered.len());
     for (i, lh) in filtered.iter().enumerate() {
-        info!(
-            index = i,
-            name = lh.name.as_str(),
-            address = lh.address.as_str(),
-            version = %lh.version(),
-            managed = lh.managed,
-            "found"
-        );
+        info!(index = i, name = %lh.name, address = %lh.address, version = %lh.version(), managed = lh.managed, "found");
         if let Some(id) = &lh.id {
-            info!(index = i, id = id.as_str(), "V1 lighthouse ID");
+            info!(index = i, id = %id, "V1 lighthouse ID");
         }
     }
 
