@@ -44,7 +44,7 @@ pub async fn discover_lighthouses(adapter: &Adapter, timeout_secs: u64) -> Resul
     // Filter for lighthouse name patterns
     let mut lighthouses = Vec::new();
     for peripheral in &peripherals {
-        let address_str = bdaddr_to_string(&peripheral.address());
+        let address_str = peripheral.address().to_string();
         if let Some(name) = get_local_name(peripheral).await
             && is_lighthouse_name(&name)
         {
@@ -75,11 +75,6 @@ async fn get_local_name(peripheral: &Peripheral) -> Option<String> {
         Ok(Some(props)) => props.local_name,
         Ok(None) | Err(_) => None,
     }
-}
-
-/// Convert BDAddr to colon-separated string like "AA:BB:CC:DD:EE:FF".
-fn bdaddr_to_string(addr: &BDAddr) -> String {
-    addr.to_string()
 }
 
 /// Connect to a specific lighthouse by its Bluetooth address.

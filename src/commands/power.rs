@@ -1,6 +1,10 @@
-use anyhow::Result;
+use anyhow::{Context, Result, bail};
+use btleplug::api::{Central, Peripheral};
+use std::collections::HashSet;
+use std::time::Duration;
 use tracing::info;
 
+use crate::bluetooth;
 use crate::lighthouse::Lighthouse;
 use crate::storage;
 
@@ -33,15 +37,79 @@ async fn run_power_action(action: PowerAction) -> Result<()> {
         return Ok(());
     }
 
+    let action_for_display = action.clone();
+    let names: Vec<String> = managed.iter().map(|m| m.name.clone()).collect();
+
     info!(
         "Power {:?} on {} managed lighthouse(s)...",
         action,
         managed.len()
     );
 
-    let adapter = crate::bluetooth::get_adapter().await?;
-    let action_for_display = action.clone();
-    let names: Vec<String> = managed.iter().map(|m| m.name.clone()).collect();
+    // Build a set of expected MAC addresses so we can check whether each
+    // device has been observed yet.
+    let expected_addresses: HashSet<String> =
+        managed.iter().map(|m| m.address.to_lowercase()).collect();
+
+    let adapter = bluetooth::get_adapter().await?;
+
+    // Start a BLE scan so that BlueZ begins advertising discovered devices.
+    adapter
+        .start_scan(btleplug::api::ScanFilter { services: vec![] })
+        .await
+        .context("Failed to start BLE scan")?;
+
+    // Wait until every managed lighthouse has been observed (or timeout).
+    let poll_interval = Duration::from_millis(500);
+    let timeout = Duration::from_secs(15);
+    let deadline = tokio::time::Instant::now() + timeout;
+
+    loop {
+        if tokio::time::Instant::now() >= deadline {
+            break;
+        }
+
+        if let Ok(peripherals) = adapter.peripherals().await {
+            let discovered: HashSet<String> = peripherals
+                .iter()
+                .map(|p| p.address().to_string().to_lowercase())
+                .collect();
+
+            if expected_addresses.is_subset(&discovered) {
+                // All managed lighthouses have been observed — proceed.
+                break;
+            }
+        }
+
+        tokio::time::sleep(poll_interval).await;
+    }
+
+    adapter.stop_scan().await.ok();
+
+    // After scanning, take a final snapshot of discovered peripherals to check
+    // which expected devices were actually found.
+    let discovered: HashSet<String> = if let Ok(peripherals) = adapter.peripherals().await {
+        peripherals
+            .iter()
+            .map(|p| p.address().to_string().to_lowercase())
+            .collect()
+    } else {
+        HashSet::new()
+    };
+
+    let missing: Vec<String> = expected_addresses
+        .difference(&discovered)
+        .cloned()
+        .collect();
+
+    if !missing.is_empty() {
+        bail!(
+            "Could not observe {} of {} managed lighthouse(s): {}. Check that they are nearby and powered on.",
+            missing.len(),
+            managed.len(),
+            missing.join(", ")
+        );
+    }
 
     // Spawn a task for each managed lighthouse for parallel control.
     // Each task independently connects, sends command, and disconnects.
