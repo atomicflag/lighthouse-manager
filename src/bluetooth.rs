@@ -4,6 +4,7 @@ pub use btleplug::platform::Manager;
 pub use btleplug::platform::Peripheral;
 
 use btleplug::api::{BDAddr, Central as _, Manager as _, Peripheral as _, ScanFilter, WriteType};
+use std::collections::HashSet;
 use std::str::FromStr;
 use std::time::Duration;
 use tracing::{debug, info, warn};
@@ -209,6 +210,53 @@ impl ConnectedPeripheral {
             debug!("Disconnected from {}", self.peripheral.address());
         }
     }
+}
+
+/// Start a BLE scan, poll until a predicate is satisfied (or timeout), then stop the scan.
+/// Returns the final set of discovered peripheral addresses (lowercase).
+pub async fn scan_until_predicate<F>(adapter: &Adapter, predicate: F) -> Result<HashSet<String>>
+where
+    F: Fn(&HashSet<String>) -> bool + Send,
+{
+    adapter
+        .start_scan(ScanFilter { services: vec![] })
+        .await
+        .context("Failed to start BLE scan")?;
+
+    let poll_interval = Duration::from_millis(500);
+    let timeout = Duration::from_secs(15);
+    let deadline = tokio::time::Instant::now() + timeout;
+
+    loop {
+        if tokio::time::Instant::now() >= deadline {
+            break;
+        }
+
+        if let Ok(peripherals) = adapter.peripherals().await {
+            let discovered: HashSet<String> = peripherals
+                .iter()
+                .map(|p| p.address().to_string().to_lowercase())
+                .collect();
+
+            if predicate(&discovered) {
+                break;
+            }
+        }
+
+        tokio::time::sleep(poll_interval).await;
+    }
+
+    adapter.stop_scan().await.ok();
+
+    // Return the final discovered set.
+    Ok(if let Ok(peripherals) = adapter.peripherals().await {
+        peripherals
+            .iter()
+            .map(|p| p.address().to_string().to_lowercase())
+            .collect()
+    } else {
+        HashSet::new()
+    })
 }
 
 /// Get the first available Bluetooth adapter. Returns an error if none found.

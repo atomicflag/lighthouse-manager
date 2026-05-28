@@ -1,7 +1,5 @@
-use anyhow::{Context, Result, bail};
-use btleplug::api::{Central, Peripheral};
+use anyhow::{Result, bail};
 use std::collections::HashSet;
-use std::time::Duration;
 use tracing::info;
 
 use crate::bluetooth;
@@ -24,8 +22,8 @@ enum PowerAction {
     Sleep,
 }
 
-/// Execute a power action on all managed lighthouses in parallel.
-async fn run_power_action(action: PowerAction) -> Result<()> {
+/// Load the database, collect managed lighthouses, and validate they are non-empty.
+pub(super) fn load_and_validate() -> Result<Vec<Lighthouse>> {
     let db = storage::load()?;
     let managed: Vec<Lighthouse> = storage::managed_lighthouses(&db)
         .into_iter()
@@ -34,11 +32,19 @@ async fn run_power_action(action: PowerAction) -> Result<()> {
 
     if managed.is_empty() {
         println!("No managed lighthouses found. Mark stations as managed in the database first.");
-        return Ok(());
+        return Ok(managed);
     }
 
-    let action_for_display = action.clone();
-    let names: Vec<String> = managed.iter().map(|m| m.name.clone()).collect();
+    Ok(managed)
+}
+
+/// Execute a power action on all managed lighthouses in parallel.
+async fn run_power_action(action: PowerAction) -> Result<()> {
+    let managed = load_and_validate()?;
+
+    if managed.is_empty() {
+        return Ok(());
+    }
 
     info!(
         "Power {:?} on {} managed lighthouse(s)...",
@@ -46,56 +52,17 @@ async fn run_power_action(action: PowerAction) -> Result<()> {
         managed.len()
     );
 
-    // Build a set of expected MAC addresses so we can check whether each
-    // device has been observed yet.
-    let expected_addresses: HashSet<String> =
-        managed.iter().map(|m| m.address.to_lowercase()).collect();
+    let expected_addresses: HashSet<String> = managed
+        .iter()
+        .map(|m| m.address.to_lowercase())
+        .collect();
 
     let adapter = bluetooth::get_adapter().await?;
 
-    // Start a BLE scan so that BlueZ begins advertising discovered devices.
-    adapter
-        .start_scan(btleplug::api::ScanFilter { services: vec![] })
-        .await
-        .context("Failed to start BLE scan")?;
-
-    // Wait until every managed lighthouse has been observed (or timeout).
-    let poll_interval = Duration::from_millis(500);
-    let timeout = Duration::from_secs(15);
-    let deadline = tokio::time::Instant::now() + timeout;
-
-    loop {
-        if tokio::time::Instant::now() >= deadline {
-            break;
-        }
-
-        if let Ok(peripherals) = adapter.peripherals().await {
-            let discovered: HashSet<String> = peripherals
-                .iter()
-                .map(|p| p.address().to_string().to_lowercase())
-                .collect();
-
-            if expected_addresses.is_subset(&discovered) {
-                // All managed lighthouses have been observed — proceed.
-                break;
-            }
-        }
-
-        tokio::time::sleep(poll_interval).await;
-    }
-
-    adapter.stop_scan().await.ok();
-
-    // After scanning, take a final snapshot of discovered peripherals to check
-    // which expected devices were actually found.
-    let discovered: HashSet<String> = if let Ok(peripherals) = adapter.peripherals().await {
-        peripherals
-            .iter()
-            .map(|p| p.address().to_string().to_lowercase())
-            .collect()
-    } else {
-        HashSet::new()
-    };
+    let discovered = bluetooth::scan_until_predicate(&adapter, |discovered| {
+        expected_addresses.is_subset(discovered)
+    })
+    .await?;
 
     let missing: Vec<String> = expected_addresses
         .difference(&discovered)
@@ -111,19 +78,31 @@ async fn run_power_action(action: PowerAction) -> Result<()> {
         );
     }
 
-    // Spawn a task for each managed lighthouse for parallel control.
-    // Each task independently connects, sends command, and disconnects.
+    execute_and_report(&adapter, managed, action).await?;
+
+    Ok(())
+}
+
+/// Spawn parallel tasks for each lighthouse, join results, and print a summary.
+async fn execute_and_report(
+    adapter: &bluetooth::Adapter,
+    managed: Vec<Lighthouse>,
+    action: PowerAction,
+) -> Result<()> {
+    let names: Vec<String> = managed.iter().map(|m| m.name.clone()).collect();
+
     let mut tasks = Vec::new();
 
-    for lh in managed {
+    for lh in &managed {
         let adapter_clone = adapter.clone();
         let name = lh.name.clone();
         let action_clone = action.clone();
+        let lh_for_task = lh.clone();
 
         let task = tokio::spawn(async move {
             match action_clone {
-                PowerAction::PowerOn => send_power_on(&adapter_clone, &lh).await,
-                PowerAction::Sleep => send_sleep(&adapter_clone, &lh).await,
+                PowerAction::PowerOn => send_power_on(&adapter_clone, &lh_for_task).await,
+                PowerAction::Sleep => send_sleep(&adapter_clone, &lh_for_task).await,
             }
             .map(|_| name.clone())
         });
@@ -131,10 +110,8 @@ async fn run_power_action(action: PowerAction) -> Result<()> {
         tasks.push(task);
     }
 
-    // Await all tasks concurrently - fully parallel like Task.WhenAll
     let results = futures::future::join_all(tasks).await;
 
-    // Process results
     let mut success_count = 0;
     let mut error_count = 0;
 
@@ -162,9 +139,14 @@ async fn run_power_action(action: PowerAction) -> Result<()> {
         }
     }
 
+    let action_display = match &action {
+        PowerAction::PowerOn => "ON",
+        PowerAction::Sleep => "OFF",
+    };
+
     println!(
         "\nPower {:?} complete: {} succeeded, {} failed out of {} managed lighthouse(s).",
-        action_for_display,
+        action_display,
         success_count,
         error_count,
         names.len()
