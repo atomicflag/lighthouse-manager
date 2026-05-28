@@ -4,7 +4,6 @@ use std::fmt;
 /// Version of a Lighthouse base station.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LighthouseVersion {
-    Unknown,
     V1, // HTC BS-*
     V2, // LHB-*
 }
@@ -12,7 +11,6 @@ pub enum LighthouseVersion {
 impl fmt::Display for LighthouseVersion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            LighthouseVersion::Unknown => write!(f, "Unknown"),
             LighthouseVersion::V1 => write!(f, "V1 (HTC BS)"),
             LighthouseVersion::V2 => write!(f, "V2 (LHB)"),
         }
@@ -43,14 +41,27 @@ impl Lighthouse {
     /// Determine the version of a lighthouse from its name.
     /// - Starts with "HTC BS" → V1
     /// - Starts with "LHB-"   → V2
-    /// - Otherwise            → Unknown
     pub fn version(&self) -> LighthouseVersion {
-        if self.name.starts_with("HTC BS") {
-            LighthouseVersion::V1
-        } else if self.name.starts_with("LHB-") {
+        if self.name.starts_with("LHB-") {
             LighthouseVersion::V2
         } else {
-            LighthouseVersion::Unknown
+            LighthouseVersion::V1
+        }
+    }
+
+    /// Returns the GATT characteristic UUID for power-on/sleep commands.
+    pub fn power_characteristic(&self) -> &'static str {
+        match self.version() {
+            LighthouseVersion::V1 => "0000cb01-0000-1000-8000-00805f9b34fb",
+            LighthouseVersion::V2 => "00001525-1212-efde-1523-785feabcd124",
+        }
+    }
+
+    /// Returns the GATT characteristic UUID for identify commands (V2 only).
+    pub fn identify_characteristic(&self) -> Option<&'static str> {
+        match self.version() {
+            LighthouseVersion::V2 => Some("00008421-1212-efde-1523-785feabcd124"),
+            _ => None, // V1 doesn't support identify
         }
     }
 }
@@ -79,17 +90,6 @@ mod tests {
             managed: false,
         };
         assert_eq!(lh.version(), LighthouseVersion::V2);
-    }
-
-    #[test]
-    fn test_unknown_version() {
-        let lh = Lighthouse {
-            name: "UnknownDevice".into(),
-            address: "AA:BB:CC:DD:EE:FF".into(),
-            id: None,
-            managed: false,
-        };
-        assert_eq!(lh.version(), LighthouseVersion::Unknown);
     }
 
     #[test]

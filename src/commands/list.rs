@@ -50,7 +50,6 @@ pub fn run(managed_only: bool, json_output: bool) -> Result<()> {
         let version = match lh.version() {
             crate::lighthouse::LighthouseVersion::V1 => "V1".to_string(),
             crate::lighthouse::LighthouseVersion::V2 => "V2".to_string(),
-            crate::lighthouse::LighthouseVersion::Unknown => "??".to_string(),
         };
         let id = match &lh.id {
             Some(id) if lh.version() == LighthouseVersion::V1 => id.clone(),

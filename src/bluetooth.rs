@@ -10,9 +10,7 @@ use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use crate::lighthouse::Lighthouse;
-use crate::protocol::{
-    self, V1_POWER_CHARACTERISTIC, V2_IDENTIFY_CHARACTERISTIC, V2_POWER_CHARACTERISTIC,
-};
+use crate::protocol;
 
 /// Discover nearby lighthouses by scanning BLE advertisements for a given duration.
 /// Filters results to only devices whose name starts with "HTC BS" or "LHB-".
@@ -185,56 +183,26 @@ impl ConnectedPeripheral {
 
     /// Power on the connected lighthouse.
     pub async fn power_on(&self, lh: &Lighthouse) -> Result<()> {
-        match lh.version() {
-            crate::lighthouse::LighthouseVersion::V1 => {
-                let id = lh
-                    .id
-                    .as_ref()
-                    .ok_or_else(|| anyhow!("V1 lighthouse missing ID"))?;
-                let cmd = protocol::build_v1_power_on(id).map_err(|e| anyhow!("{}", e))?;
-                self.write_and_disconnect(V1_POWER_CHARACTERISTIC, &cmd)
-                    .await
-            }
-            crate::lighthouse::LighthouseVersion::V2 => {
-                let cmd = protocol::build_v2_power_on();
-                self.write_and_disconnect(V2_POWER_CHARACTERISTIC, &cmd)
-                    .await
-            }
-            crate::lighthouse::LighthouseVersion::Unknown => {
-                bail!("Cannot power on lighthouse with unknown version");
-            }
-        }
+        let cmd = protocol::build_power_command(lh).map_err(|e| anyhow!("{}", e))?;
+        self.write_and_disconnect(lh.power_characteristic(), &cmd)
+            .await
     }
 
     /// Sleep the connected lighthouse.
     pub async fn sleep(&self, lh: &Lighthouse) -> Result<()> {
-        match lh.version() {
-            crate::lighthouse::LighthouseVersion::V1 => {
-                let id = lh
-                    .id
-                    .as_ref()
-                    .ok_or_else(|| anyhow!("V1 lighthouse missing ID"))?;
-                let cmd = protocol::build_v1_sleep(id).map_err(|e| anyhow!("{}", e))?;
-                self.write_and_disconnect(V1_POWER_CHARACTERISTIC, &cmd)
-                    .await
-            }
-            crate::lighthouse::LighthouseVersion::V2 => {
-                let cmd = protocol::build_v2_sleep();
-                self.write_and_disconnect(V2_POWER_CHARACTERISTIC, &cmd)
-                    .await
-            }
-            crate::lighthouse::LighthouseVersion::Unknown => {
-                bail!("Cannot sleep lighthouse with unknown version");
-            }
-        }
+        let cmd = protocol::build_sleep_command(lh).map_err(|e| anyhow!("{}", e))?;
+        self.write_and_disconnect(lh.power_characteristic(), &cmd)
+            .await
     }
 
     /// Identify the connected lighthouse (V2 only — causes LED flash).
     pub async fn identify(&self, lh: &Lighthouse) -> Result<()> {
-        let _cmd = protocol::build_identify_command(lh).map_err(|e| anyhow!("{}", e))?; // validate first
+        protocol::build_identify_command(lh).map_err(|e| anyhow!("{}", e))?; // validates version
         let cmd = protocol::build_v2_identify();
-        self.write_and_disconnect(V2_IDENTIFY_CHARACTERISTIC, &cmd)
-            .await
+        let uuid = lh
+            .identify_characteristic()
+            .ok_or_else(|| anyhow!("Identify is not supported on this lighthouse"))?;
+        self.write_and_disconnect(uuid, &cmd).await
     }
 
     /// Disconnect the device.

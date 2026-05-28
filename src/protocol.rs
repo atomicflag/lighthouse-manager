@@ -1,11 +1,6 @@
 /// Protocol helpers for building Lighthouse power control commands.
 use crate::lighthouse::{Lighthouse, LighthouseVersion};
 
-// GATT Service UUIDs
-pub const V1_POWER_CHARACTERISTIC: &str = "0000cb01-0000-1000-8000-00805f9b34fb";
-pub const V2_POWER_CHARACTERISTIC: &str = "00001525-1212-efde-1523-785feabcd124";
-pub const V2_IDENTIFY_CHARACTERISTIC: &str = "00008421-1212-efde-1523-785feabcd124";
-
 /// Build the power-on command bytes for a V1 lighthouse.
 /// Format: [0x12, 0x00, 0x00, 0x00] + reversed ID bytes (4) + [0x00; 12] = 20 bytes total.
 pub fn build_v1_power_on(id: &str) -> Result<Vec<u8>, String> {
@@ -78,7 +73,6 @@ pub fn build_power_command(lh: &Lighthouse) -> Result<Vec<u8>, String> {
             build_v1_power_on(id)
         }
         LighthouseVersion::V2 => Ok(build_v2_power_on()),
-        LighthouseVersion::Unknown => Err("Cannot build power command for unknown version".into()),
     }
 }
 
@@ -93,7 +87,6 @@ pub fn build_sleep_command(lh: &Lighthouse) -> Result<Vec<u8>, String> {
             build_v1_sleep(id)
         }
         LighthouseVersion::V2 => Ok(build_v2_sleep()),
-        LighthouseVersion::Unknown => Err("Cannot build sleep command for unknown version".into()),
     }
 }
 
@@ -102,9 +95,6 @@ pub fn build_identify_command(lh: &Lighthouse) -> Result<Vec<u8>, String> {
     match lh.version() {
         LighthouseVersion::V2 => Ok(build_v2_identify()),
         LighthouseVersion::V1 => Err("Identify is not supported on V1 lighthouses".into()),
-        LighthouseVersion::Unknown => {
-            Err("Cannot build identify command for unknown version".into())
-        }
     }
 }
 
