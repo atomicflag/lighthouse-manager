@@ -2,9 +2,7 @@
 use crate::lighthouse::{Lighthouse, LighthouseVersion};
 
 // GATT Service UUIDs
-pub const V1_CONTROL_SERVICE: &str = "0000cb00-0000-1000-8000-00805f9b34fb";
 pub const V1_POWER_CHARACTERISTIC: &str = "0000cb01-0000-1000-8000-00805f9b34fb";
-pub const V2_CONTROL_SERVICE: &str = "00001523-1212-efde-1523-785feabcd124";
 pub const V2_POWER_CHARACTERISTIC: &str = "00001525-1212-efde-1523-785feabcd124";
 pub const V2_IDENTIFY_CHARACTERISTIC: &str = "00008421-1212-efde-1523-785feabcd124";
 
@@ -67,34 +65,6 @@ fn parse_v1_id_bytes(id: &str) -> Vec<u8> {
         .step_by(2)
         .map(|i| u8::from_str_radix(&id[i..i + 2], 16).unwrap_or(0))
         .collect()
-}
-
-/// Get the power control characteristic UUID for a lighthouse.
-pub fn power_control_uuid(version: LighthouseVersion) -> &'static str {
-    match version {
-        LighthouseVersion::V1 => V1_POWER_CHARACTERISTIC,
-        LighthouseVersion::V2 => V2_POWER_CHARACTERISTIC,
-        LighthouseVersion::Unknown => unreachable!("Cannot determine UUID for Unknown version"),
-    }
-}
-
-/// Get the control service UUID for a lighthouse.
-pub fn control_service_uuid(version: LighthouseVersion) -> &'static str {
-    match version {
-        LighthouseVersion::V1 => V1_CONTROL_SERVICE,
-        LighthouseVersion::V2 => V2_CONTROL_SERVICE,
-        LighthouseVersion::Unknown => {
-            unreachable!("Cannot determine service UUID for Unknown version")
-        }
-    }
-}
-
-/// Get the identify characteristic UUID (V2 only).
-pub fn identify_characteristic_uuid(version: LighthouseVersion) -> &'static str {
-    match version {
-        LighthouseVersion::V2 => V2_IDENTIFY_CHARACTERISTIC,
-        _ => panic!("Identify is only supported on V2 lighthouses"),
-    }
 }
 
 /// Build the power control command bytes for a lighthouse.
@@ -186,26 +156,6 @@ mod tests {
     fn test_parse_v1_id_bytes() {
         let bytes = parse_v1_id_bytes("AABBCCDD");
         assert_eq!(bytes, vec![0xAA, 0xBB, 0xCC, 0xDD]);
-    }
-
-    #[test]
-    fn test_uuid_constants() {
-        assert_eq!(
-            power_control_uuid(LighthouseVersion::V1),
-            V1_POWER_CHARACTERISTIC
-        );
-        assert_eq!(
-            power_control_uuid(LighthouseVersion::V2),
-            V2_POWER_CHARACTERISTIC
-        );
-        assert_eq!(
-            control_service_uuid(LighthouseVersion::V1),
-            V1_CONTROL_SERVICE
-        );
-        assert_eq!(
-            control_service_uuid(LighthouseVersion::V2),
-            V2_CONTROL_SERVICE
-        );
     }
 
     #[test]
