@@ -2,7 +2,7 @@
 
 Control SteamVR Lighthouse base stations (V1 & V2) via Bluetooth LE from the command line.
 
-[![Build Status](https://github.com/<USERNAME>/lighthouse-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/<USERNAME>/lighthouse-manager/actions)
+[![Build Status](https://github.com/atomicflag/lighthouse-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/atomicflag/lighthouse-manager/actions)
 [![Crates.io](https://img.shields.io/crates/v/lighthouse-manager.svg)](https://crates.io/crates/lighthouse-manager)
 [![Docs.rs](https://docs.rs/lighthouse-manager/badge.svg)](https://docs.rs/lighthouse-manager)
 [![Minimum Rust Version: 1.85](https://img.shields.io/badge/Rust-1.85+-orange.svg)](https://www.rust-lang.org/tools/install)
@@ -38,12 +38,12 @@ Then run `lighthouse-manager --help` to verify the installation.
 
 ### Prebuilt binaries
 
-Download the latest release binary for your platform from [GitHub Releases](https://github.com/<USERNAME>/lighthouse-manager/releases).
+Download the latest release binary for your platform from [GitHub Releases](https://github.com/atomicflag/lighthouse-manager/releases).
 
 ### From source
 
 ```bash
-git clone https://github.com/<USERNAME>/lighthouse-manager.git
+git clone https://github.com/atomicflag/lighthouse-manager.git
 cd lighthouse-manager
 cargo build --release
 ./target/release/lighthouse-manager --help
