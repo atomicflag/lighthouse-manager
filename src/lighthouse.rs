@@ -9,15 +9,6 @@ pub enum LighthouseVersion {
     V2, // LHB-*
 }
 
-impl LighthouseVersion {
-    pub fn is_v1(&self) -> bool {
-        matches!(self, LighthouseVersion::V1)
-    }
-    pub fn is_v2(&self) -> bool {
-        matches!(self, LighthouseVersion::V2)
-    }
-}
-
 impl fmt::Display for LighthouseVersion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

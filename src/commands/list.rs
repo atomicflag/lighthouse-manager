@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::lighthouse::Lighthouse;
+use crate::lighthouse::{Lighthouse, LighthouseVersion};
 use crate::storage;
 
 /// List all known lighthouses or only managed ones.
@@ -53,7 +53,7 @@ pub fn run(managed_only: bool, json_output: bool) -> Result<()> {
             crate::lighthouse::LighthouseVersion::Unknown => "??".to_string(),
         };
         let id = match &lh.id {
-            Some(id) if lh.version().is_v1() => id.clone(),
+            Some(id) if lh.version() == LighthouseVersion::V1 => id.clone(),
             _ => String::new(),
         };
         println!(

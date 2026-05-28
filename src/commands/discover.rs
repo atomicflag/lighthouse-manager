@@ -1,7 +1,7 @@
 use anyhow::Result;
 use tracing::info;
 
-use crate::storage;
+use crate::{lighthouse::LighthouseVersion, storage};
 
 /// Discover nearby lighthouses and save them to the database.
 /// Newly discovered units are added unmanaged; existing entries are preserved (dedup by address).
@@ -41,7 +41,7 @@ pub async fn run(timeout_secs: u64) -> Result<()> {
     println!("\nLighthouses found:");
     for lh in &discovered {
         let managed_mark = if lh.managed { "[M]" } else { "   " };
-        let id_info = match (lh.version().is_v1(), &lh.id) {
+        let id_info = match (lh.version() == LighthouseVersion::V1, &lh.id) {
             (true, Some(id)) => format!(" (ID: {})", id),
             (true, None) => " (⚠ missing ID - edit config)".to_string(),
             _ => String::new(),

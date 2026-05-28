@@ -1,6 +1,8 @@
 use anyhow::Result;
 use tracing::{error, info};
 
+use crate::lighthouse::LighthouseVersion;
+
 /// Identify a specific V2 lighthouse by index in the database.
 /// This causes the lighthouse to blink its LED for visual identification.
 pub async fn run(index: usize) -> Result<()> {
@@ -16,7 +18,7 @@ pub async fn run(index: usize) -> Result<()> {
 
     let lh = &db.lighthouses[index];
 
-    if !lh.version().is_v2() {
+    if lh.version() != LighthouseVersion::V2 {
         anyhow::bail!(
             "Identify is only supported on V2 lighthouses. '{}' is a {}",
             lh.name,
