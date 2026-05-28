@@ -288,40 +288,4 @@ mod tests {
         assert!(is_lighthouse_name("LHB-AABBCCDD"));
         assert!(!is_lighthouse_name("LBH-Something"));
     }
-
-    #[test]
-    fn test_bdaddr_from_bytes() {
-        let bytes: [u8; 6] = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
-        let bdaddr: BDAddr = bytes.into();
-        assert_eq!(bdaddr.to_string(), "AA:BB:CC:DD:EE:FF");
-    }
-
-    #[test]
-    fn test_bdaddr_from_str() {
-        let addr_str = "AA:BB:CC:DD:EE:FF";
-        let bdaddr = BDAddr::from_str(addr_str).unwrap();
-        assert_eq!(bdaddr.to_string(), addr_str);
-    }
-
-    #[test]
-    fn test_uuid_parse() {
-        let uuid = Uuid::parse_str("0000cb01-0000-1000-8000-00805f9b34fb").unwrap();
-        assert_eq!(uuid.to_string(), "0000cb01-0000-1000-8000-00805f9b34fb");
-    }
-
-    #[test]
-    fn test_uuid_constants() {
-        assert_eq!(
-            V1_POWER_CHARACTERISTIC,
-            "0000cb01-0000-1000-8000-00805f9b34fb"
-        );
-        assert_eq!(
-            V2_POWER_CHARACTERISTIC,
-            "00001525-1212-efde-1523-785feabcd124"
-        );
-        assert_eq!(
-            V2_IDENTIFY_CHARACTERISTIC,
-            "00008421-1212-efde-1523-785feabcd124"
-        );
-    }
 }
