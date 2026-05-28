@@ -61,7 +61,7 @@ impl Lighthouse {
     pub fn identify_characteristic(&self) -> Option<&'static str> {
         match self.version() {
             LighthouseVersion::V2 => Some("00008421-1212-efde-1523-785feabcd124"),
-            _ => None, // V1 doesn't support identify
+            LighthouseVersion::V1 => None, // V1 doesn't support identify
         }
     }
 }

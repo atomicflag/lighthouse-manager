@@ -45,10 +45,10 @@ pub fn build_v2_identify() -> Vec<u8> {
 /// Validate that an ID is exactly 8 hex characters.
 fn validate_v1_id(id: &str) -> Result<(), String> {
     if id.len() != 8 {
-        return Err(format!("Invalid V1 ID length: {} (expected 8 chars)", id));
+        return Err(format!("Invalid V1 ID length: {id} (expected 8 chars)"));
     }
     if !id.chars().all(|c| c.is_ascii_hexdigit()) {
-        return Err(format!("V1 ID contains non-hex characters: {}", id));
+        return Err(format!("V1 ID contains non-hex characters: {id}"));
     }
     Ok(())
 }

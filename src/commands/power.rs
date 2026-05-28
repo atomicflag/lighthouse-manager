@@ -102,7 +102,7 @@ async fn execute_and_report(
                 PowerAction::PowerOn => send_power_on(&adapter_clone, &lh_for_task).await,
                 PowerAction::Sleep => send_sleep(&adapter_clone, &lh_for_task).await,
             }
-            .map(|_| name.clone())
+            .map(|()| name.clone())
         });
 
         tasks.push(task);

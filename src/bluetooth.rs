@@ -84,7 +84,7 @@ pub async fn connect_lighthouse(
     address_str: &str,
 ) -> Result<ConnectedPeripheral> {
     let target_addr = BDAddr::from_str(address_str)
-        .map_err(|e| anyhow!("Invalid Bluetooth address format '{}': {}", address_str, e))?;
+        .map_err(|e| anyhow!("Invalid Bluetooth address format '{address_str}': {e}"))?;
 
     // Find the peripheral in the adapter's known peripherals
     let peripherals = adapter
@@ -95,7 +95,7 @@ pub async fn connect_lighthouse(
     let peripheral = peripherals
         .into_iter()
         .find(|p| p.address() == target_addr)
-        .ok_or_else(|| anyhow!("Peripheral not found: {}", address_str))?;
+        .ok_or_else(|| anyhow!("Peripheral not found: {address_str}"))?;
 
     info!("Connecting to {}...", peripheral.address());
     peripheral
@@ -122,7 +122,7 @@ pub struct ConnectedPeripheral {
 impl ConnectedPeripheral {
     /// Write data to a characteristic and disconnect.
     async fn write_and_disconnect(&self, uuid_str: &str, data: &[u8]) -> Result<()> {
-        let uuid = Uuid::parse_str(uuid_str).map_err(|_| anyhow!("Invalid UUID: {}", uuid_str))?;
+        let uuid = Uuid::parse_str(uuid_str).map_err(|_| anyhow!("Invalid UUID: {uuid_str}"))?;
 
         // Retry logic: 5 attempts × 1s delay
         for attempt in 1..=5 {
@@ -148,11 +148,7 @@ impl ConnectedPeripheral {
                     tokio::time::sleep(Duration::from_secs(1)).await;
                 }
                 Err(e) => {
-                    bail!(
-                        "Failed to write to characteristic {} after 5 attempts: {}",
-                        uuid_str,
-                        e
-                    );
+                    bail!("Failed to write to characteristic {uuid_str} after 5 attempts: {e}");
                 }
             }
         }
@@ -179,21 +175,21 @@ impl ConnectedPeripheral {
 
     /// Power on the connected lighthouse.
     pub async fn power_on(&self, lh: &Lighthouse) -> Result<()> {
-        let cmd = protocol::build_power_command(lh).map_err(|e| anyhow!("{}", e))?;
+        let cmd = protocol::build_power_command(lh).map_err(|e| anyhow!("{e}"))?;
         self.write_and_disconnect(lh.power_characteristic(), &cmd)
             .await
     }
 
     /// Sleep the connected lighthouse.
     pub async fn sleep(&self, lh: &Lighthouse) -> Result<()> {
-        let cmd = protocol::build_sleep_command(lh).map_err(|e| anyhow!("{}", e))?;
+        let cmd = protocol::build_sleep_command(lh).map_err(|e| anyhow!("{e}"))?;
         self.write_and_disconnect(lh.power_characteristic(), &cmd)
             .await
     }
 
     /// Identify the connected lighthouse (V2 only — causes LED flash).
     pub async fn identify(&self, lh: &Lighthouse) -> Result<()> {
-        protocol::build_identify_command(lh).map_err(|e| anyhow!("{}", e))?; // validates version
+        protocol::build_identify_command(lh).map_err(|e| anyhow!("{e}"))?; // validates version
         let cmd = protocol::build_v2_identify();
         let uuid = lh
             .identify_characteristic()
@@ -263,7 +259,7 @@ where
 pub async fn get_adapter() -> Result<Adapter> {
     let manager = Manager::new()
         .await
-        .map_err(|e| anyhow!("Failed to create BLE manager: {}", e))?;
+        .map_err(|e| anyhow!("Failed to create BLE manager: {e}"))?;
     let adapters = manager
         .adapters()
         .await

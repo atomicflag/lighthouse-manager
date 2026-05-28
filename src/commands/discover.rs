@@ -36,7 +36,7 @@ pub async fn run(timeout_secs: u64) -> Result<()> {
             "found"
         );
         let id_info = match (lh.version() == LighthouseVersion::V1, &lh.id) {
-            (true, Some(id)) => format!(" V1 ID: {}", id),
+            (true, Some(id)) => format!(" V1 ID: {id}"),
             (true, None) => " WARNING: missing V1 ID - edit config".to_string(),
             _ => String::new(),
         };
