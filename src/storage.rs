@@ -7,12 +7,7 @@ use std::path::PathBuf;
 use crate::lighthouse::Lighthouse;
 
 /// Path to the JSON database file, determined cross-platform via `directories`.
-/// In tests, overrides with `$LH_MANAGER_TEST_DB` if set.
 fn config_path() -> Result<PathBuf> {
-    // For testing: use an explicit path if LH_MANAGER_TEST_DB is set
-    if let Ok(path) = std::env::var("LH_MANAGER_TEST_DB") {
-        return Ok(PathBuf::from(path));
-    }
     let proj = ProjectDirs::from("io", "atomicflag", "Lighthouse Manager")
         .ok_or_else(|| anyhow::anyhow!("Could not determine config directory"))?;
     let dir = proj.config_local_dir();
@@ -37,24 +32,34 @@ impl Default for LighthouseDatabase {
     }
 }
 
-/// Load the database from disk. Returns empty DB if file doesn't exist.
-pub fn load() -> Result<LighthouseDatabase> {
-    let path = config_path()?;
+/// Load the database from a specific path. Returns empty DB if file doesn't exist.
+fn load_at(path: &PathBuf) -> Result<LighthouseDatabase> {
     if !path.exists() {
         return Ok(LighthouseDatabase::default());
     }
-    let content = fs::read_to_string(&path).context("Failed to read lighthouse database")?;
+    let content = fs::read_to_string(path).context("Failed to read lighthouse database")?;
     let db: LighthouseDatabase =
         serde_json::from_str(&content).context("Failed to parse lighthouse database JSON")?;
     Ok(db)
 }
 
-/// Save the database to disk.
+/// Save the database to a specific path.
+fn save_at(path: &PathBuf, db: &LighthouseDatabase) -> Result<()> {
+    let content = serde_json::to_string_pretty(db).context("Failed to serialize database")?;
+    fs::write(path, content).context("Failed to write lighthouse database")?;
+    Ok(())
+}
+
+/// Load the database from disk (using the default config path). Returns empty DB if file doesn't exist.
+pub fn load() -> Result<LighthouseDatabase> {
+    let path = config_path()?;
+    load_at(&path)
+}
+
+/// Save the database to disk (using the default config path).
 pub fn save(db: &LighthouseDatabase) -> Result<()> {
     let path = config_path()?;
-    let content = serde_json::to_string_pretty(db).context("Failed to serialize database")?;
-    fs::write(&path, content).context("Failed to write lighthouse database")?;
-    Ok(())
+    save_at(&path, db)
 }
 
 /// Add newly discovered lighthouses to the database.
@@ -90,36 +95,25 @@ pub fn managed_lighthouses(db: &LighthouseDatabase) -> Vec<&Lighthouse> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs::remove_file;
     use std::path::PathBuf;
 
-    fn make_test_fixture() -> (PathBuf, tempfile::TempDir) {
-        // Use a unique temp directory for this thread to avoid cross-test pollution
-        use tempfile::TempDir;
-        let dir: TempDir = tempfile::tempdir().unwrap();
+    fn test_db_path() -> (PathBuf, tempfile::TempDir) {
+        let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("lighthouses.json");
-        unsafe { std::env::set_var("LH_MANAGER_TEST_DB", path.to_str().unwrap()) };
         (path, dir)
-    }
-
-    fn cleanup_test_fixture(path: &PathBuf) {
-        let _ = remove_file(path);
-        unsafe { std::env::remove_var("LH_MANAGER_TEST_DB") };
     }
 
     #[test]
     fn test_load_empty_db() {
-        let (path, _guard) = make_test_fixture();
-        // Temp dir is empty, so load should return default DB
-        let db = load().unwrap();
+        let (path, _guard) = test_db_path();
+        let db = load_at(&path).unwrap();
         assert!(db.lighthouses.is_empty());
         assert_eq!(db.version, 1);
-        cleanup_test_fixture(&path);
     }
 
     #[test]
     fn test_save_and_load() {
-        let (path, _guard) = make_test_fixture();
+        let (path, _guard) = test_db_path();
 
         let db = LighthouseDatabase {
             version: 1,
@@ -130,20 +124,17 @@ mod tests {
                 managed: true,
             }],
         };
-        save(&db).unwrap();
+        save_at(&path, &db).unwrap();
 
-        let loaded = load().unwrap();
+        let loaded = load_at(&path).unwrap();
         assert_eq!(loaded.lighthouses.len(), 1);
         assert_eq!(loaded.lighthouses[0].name, "LHB-0A1B2C3D");
         assert!(loaded.lighthouses[0].managed);
-
-        // Clean up
-        cleanup_test_fixture(&path);
     }
 
     #[test]
     fn test_add_new_deduplication() {
-        let (path, _guard) = make_test_fixture();
+        let (path, _guard) = test_db_path();
 
         let mut db = LighthouseDatabase {
             version: 1,
@@ -177,13 +168,12 @@ mod tests {
         // Original entry preserved (not overwritten by discovered)
         assert_eq!(db.lighthouses[0].name, "HTC BS-AABBCCDD");
 
-        save(&db).ok();
-        cleanup_test_fixture(&path);
+        save_at(&path, &db).ok();
     }
 
     #[test]
     fn test_newly_discovered_are_unmanaged() {
-        let (path, _guard) = make_test_fixture();
+        let (path, _guard) = test_db_path();
 
         let mut db = LighthouseDatabase::default();
         let discovered = vec![Lighthouse {
@@ -198,8 +188,7 @@ mod tests {
         // Newly added should be unmanaged regardless of what was passed in
         assert!(!db.lighthouses[0].managed);
 
-        save(&db).ok();
-        cleanup_test_fixture(&path);
+        save_at(&path, &db).ok();
     }
 
     #[test]
