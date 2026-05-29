@@ -7,13 +7,25 @@ use std::path::PathBuf;
 
 use crate::lighthouse::Lighthouse;
 
-/// Path to the JSON database file, determined cross-platform via `directories`.
-fn config_path() -> Result<PathBuf> {
+/// Returns the platform-specific local config directory for this app.
+///
+/// The directory is created if it doesn't already exist.
+///
+/// # Errors
+///
+/// Returns an error if the platform-specific config directory cannot be determined.
+pub fn config_local_dir() -> Result<PathBuf> {
     let proj = ProjectDirs::from("io", "atomicflag", "Lighthouse Manager")
         .ok_or_else(|| anyhow::anyhow!("Could not determine config directory"))?;
     let dir = proj.config_local_dir();
     // Create the directory if it doesn't exist
     fs::create_dir_all(dir).context("Failed to create config directory")?;
+    Ok(dir.to_path_buf())
+}
+
+/// Path to the JSON database file, determined cross-platform via `directories`.
+fn config_path() -> Result<PathBuf> {
+    let dir = config_local_dir()?;
     Ok(dir.join("lighthouses.json"))
 }
 
