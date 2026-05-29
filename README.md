@@ -8,7 +8,6 @@ Control SteamVR Lighthouse base stations (V1 & V2) via Bluetooth LE from the com
 [![Minimum Rust Version: 1.85](https://img.shields.io/badge/Rust-1.85+-orange.svg)](https://www.rust-lang.org/tools/install)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](#license)
 
----
 
 ## Overview
 
@@ -23,8 +22,6 @@ Control SteamVR Lighthouse base stations (V1 & V2) via Bluetooth LE from the com
 - 💾 **Persistent storage** — Database backed by a local JSON file (via XDG dirs)
 - 🌳 **Structured logging** — `tracing` with verbosity levels (`-v`, `-vv`) and `RUST_LOG` support
 - ✅ **Cross-platform** — Linux, macOS, and Windows (requires BLE adapter)
-
----
 
 ## Installation
 
@@ -48,8 +45,6 @@ cd lighthouse-manager
 cargo build --release
 ./target/release/lighthouse-manager --help
 ```
-
----
 
 ## Usage
 
@@ -78,6 +73,21 @@ lighthouse-manager list --managed
 
 # Output as pretty JSON
 lighthouse-manager list --json
+```
+
+### Set managed status
+
+Mark one or all lighthouses as managed or unmanaged. Only *managed* lighthouses are affected by `power-on` / `power-off`.
+
+```bash
+# Mark a specific lighthouse as managed
+lighthouse-manager set-managed 0 true
+
+# Mark a specific lighthouse as unmanaged (ignored by power commands)
+lighthouse-manager set-managed 1 false
+
+# Mark all lighthouses in the database as managed
+lighthouse-manager set-managed all true
 ```
 
 ### Power On / Off
@@ -114,11 +124,6 @@ RUST_LOG=lighthouse_manager=debug lighthouse-manager list
 RUST_LOG=lighthouse_manager=trace lighthouse-manager discover
 ```
 
-<!-- start: CLI Help -->
-
-<!-- end: CLI Help -->
-
----
 
 ## Architecture
 
@@ -130,13 +135,12 @@ src/
 ├── protocol.rs          # BLE GATT communication protocol layer
 ├── storage.rs           # Local JSON database (XDG-compliant paths)
 └── commands/
-    ├── discover.rs      # BLE scan → save discovered units
-    ├── list.rs          # Database listing with filtering
-    ├── power.rs         # Parallel power on/off via GATT writes
-    └── identify.rs      # V2 LED flash via GATT characteristic
+    ├── discover.rs       # BLE scan → save discovered units
+    ├── list.rs           # Database listing with filtering
+    ├── set_managed.rs    # Set managed/unmanaged status by index or "all"
+    ├── power.rs          # Parallel power on/off via GATT writes
+    └── identify.rs       # V2 LED flash via GATT characteristic
 ```
-
----
 
 ## Building from Source
 
@@ -155,8 +159,6 @@ cargo build
 cargo build --release
 ```
 
----
-
 ## Testing
 
 Run the full test suite:
@@ -164,8 +166,6 @@ Run the full test suite:
 ```bash
 cargo test
 ```
-
----
 
 ## Contributing
 

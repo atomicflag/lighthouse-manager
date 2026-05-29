@@ -5,7 +5,7 @@ mod protocol;
 mod storage;
 
 use anyhow::Result;
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, builder::BoolishValueParser};
 use tracing::{error, info};
 
 #[derive(Parser)]
@@ -55,6 +55,15 @@ enum Command {
         /// Zero-based index of the lighthouse in the database.
         index: usize,
     },
+
+    /// Set one or all lighthouses as managed or unmanaged.
+    SetManaged {
+        /// Index of a single lighthouse, or "all" to set every entry.
+        target: String,
+        /// true = manage this lighthouse, false = ignore it.
+        #[arg(action = clap::ArgAction::Set, value_parser = BoolishValueParser::new())]
+        managed: bool,
+    },
 }
 
 #[tokio::main]
@@ -92,6 +101,7 @@ async fn main() -> Result<()> {
         Command::PowerOn => commands::power::power_on().await,
         Command::PowerOff => commands::power::power_off().await,
         Command::Identify { index } => commands::identify::run(index).await,
+        Command::SetManaged { target, managed } => commands::set_managed::run(&target, managed),
     };
 
     if let Err(e) = &result {
