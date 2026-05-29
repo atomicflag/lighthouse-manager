@@ -11,7 +11,7 @@ use openvr_sys as sys;
 // Application key — must match the one in manifest.vrmanifest exactly.
 // Valve's convention is "developer.AppName" in lower-snake-case.
 // ---------------------------------------------------------------------------
-const APP_KEY: &str = "mydev.steamvr_companion";
+const APP_KEY: &str = "io.atomicflag.lighthouse-manager";
 
 // ---------------------------------------------------------------------------
 // How long to sleep between event-poll iterations (keeps CPU usage negligible).
