@@ -81,6 +81,7 @@ pub fn add_new(db: &mut LighthouseDatabase, discovered: &[Lighthouse]) -> usize 
 }
 
 /// Get all managed lighthouses.
+#[must_use] 
 pub fn managed_lighthouses(db: &LighthouseDatabase) -> Vec<&Lighthouse> {
     db.lighthouses.iter().filter(|l| l.managed).collect()
 }

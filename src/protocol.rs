@@ -29,16 +29,19 @@ pub fn build_v1_sleep(id: &str) -> Result<Vec<u8>> {
 }
 
 /// Build the power-on command for a V2 lighthouse.
+#[must_use] 
 pub fn build_v2_power_on() -> Vec<u8> {
     vec![0x01]
 }
 
 /// Build the sleep command for a V2 lighthouse.
+#[must_use] 
 pub fn build_v2_sleep() -> Vec<u8> {
     vec![0x00]
 }
 
 /// Build the identify command for a V2 lighthouse.
+#[must_use] 
 pub fn build_v2_identify() -> Vec<u8> {
     vec![0x01]
 }

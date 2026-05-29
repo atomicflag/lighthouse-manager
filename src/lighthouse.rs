@@ -41,6 +41,7 @@ impl Lighthouse {
     /// Determine the version of a lighthouse from its name.
     /// - Starts with "HTC BS" → V1
     /// - Starts with "LHB-"   → V2
+    #[must_use] 
     pub fn version(&self) -> LighthouseVersion {
         if self.name.starts_with("LHB-") {
             LighthouseVersion::V2
@@ -50,6 +51,7 @@ impl Lighthouse {
     }
 
     /// Returns the GATT characteristic UUID for power-on/sleep commands.
+    #[must_use] 
     pub fn power_characteristic(&self) -> &'static str {
         match self.version() {
             LighthouseVersion::V1 => "0000cb01-0000-1000-8000-00805f9b34fb",
@@ -58,6 +60,7 @@ impl Lighthouse {
     }
 
     /// Returns the GATT characteristic UUID for identify commands (V2 only).
+    #[must_use] 
     pub fn identify_characteristic(&self) -> Option<&'static str> {
         match self.version() {
             LighthouseVersion::V2 => Some("00008421-1212-efde-1523-785feabcd124"),
