@@ -16,11 +16,9 @@ Control SteamVR Lighthouse base stations (V1 & V2) via Bluetooth LE from the com
 ### Features
 
 - 🔍 **Discover** — Scan the air for nearby Lighthouse base stations via BLE
-- 📋 **List** — View known lighthouses (filter by managed status, JSON output)
 - ⚡ **Power On/Off** — Turn all managed lighthouses on or off in parallel
 - 💡 **Identify (blink)** — Make a V2 Lighthouse flash its LED by index
 - 💾 **Persistent storage** — Database backed by a local JSON file (via XDG dirs)
-- 🌳 **Structured logging** — `tracing` with verbosity levels (`-v`, `-vv`) and `RUST_LOG` support
 - ✅ **Cross-platform** — Linux, macOS, and Windows (requires BLE adapter)
 
 ## Installation
