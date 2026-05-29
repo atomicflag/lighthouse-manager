@@ -7,11 +7,21 @@ use crate::lighthouse::Lighthouse;
 use crate::storage;
 
 /// Power on all managed lighthouses in parallel.
+///
+/// # Errors
+///
+/// Returns an error if no Bluetooth adapter is available, managed devices cannot be discovered,
+/// or any power-on command fails.
 pub async fn power_on() -> Result<()> {
     run_power_action(PowerAction::PowerOn).await
 }
 
 /// Sleep (power off) all managed lighthouses in parallel.
+///
+/// # Errors
+///
+/// Returns an error if no Bluetooth adapter is available, managed devices cannot be discovered,
+/// or any sleep command fails.
 pub async fn power_off() -> Result<()> {
     run_power_action(PowerAction::Sleep).await
 }

@@ -4,6 +4,10 @@ use tracing::{debug, info};
 use crate::storage;
 
 /// List all known lighthouses or only managed ones.
+///
+/// # Errors
+///
+/// Returns an error if the database cannot be loaded or JSON serialization fails.
 pub fn run(managed_only: bool, json_output: bool) -> Result<()> {
     let db = storage::load()?;
 

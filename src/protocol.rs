@@ -1,9 +1,13 @@
 /// Protocol helpers for building Lighthouse power control commands.
 use crate::lighthouse::{Lighthouse, LighthouseVersion};
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 
 /// Build the power-on command bytes for a V1 lighthouse.
 /// Format: [0x12, 0x00, 0x00, 0x00] + reversed ID bytes (4) + [0x00; 12] = 20 bytes total.
+///
+/// # Errors
+///
+/// Returns an error if the provided ID is not exactly 8 hex characters.
 pub fn build_v1_power_on(id: &str) -> Result<Vec<u8>> {
     validate_v1_id(id)?;
     let id_bytes = parse_v1_id_bytes(id);
@@ -17,6 +21,10 @@ pub fn build_v1_power_on(id: &str) -> Result<Vec<u8>> {
 
 /// Build the sleep command bytes for a V1 lighthouse.
 /// Format: [0x12, 0x02, 0x00, 0x01] + reversed ID bytes (4) + [0x00; 12] = 20 bytes total.
+///
+/// # Errors
+///
+/// Returns an error if the provided ID is not exactly 8 hex characters.
 pub fn build_v1_sleep(id: &str) -> Result<Vec<u8>> {
     validate_v1_id(id)?;
     let id_bytes = parse_v1_id_bytes(id);
@@ -29,19 +37,19 @@ pub fn build_v1_sleep(id: &str) -> Result<Vec<u8>> {
 }
 
 /// Build the power-on command for a V2 lighthouse.
-#[must_use] 
+#[must_use]
 pub fn build_v2_power_on() -> Vec<u8> {
     vec![0x01]
 }
 
 /// Build the sleep command for a V2 lighthouse.
-#[must_use] 
+#[must_use]
 pub fn build_v2_sleep() -> Vec<u8> {
     vec![0x00]
 }
 
 /// Build the identify command for a V2 lighthouse.
-#[must_use] 
+#[must_use]
 pub fn build_v2_identify() -> Vec<u8> {
     vec![0x01]
 }
@@ -67,6 +75,10 @@ fn parse_v1_id_bytes(id: &str) -> Vec<u8> {
 }
 
 /// Build the power control command bytes for a lighthouse.
+///
+/// # Errors
+///
+/// Returns an error if the lighthouse is V1 but has no ID set.
 pub fn build_power_command(lh: &Lighthouse) -> Result<Vec<u8>> {
     match lh.version() {
         LighthouseVersion::V1 => {
@@ -81,6 +93,10 @@ pub fn build_power_command(lh: &Lighthouse) -> Result<Vec<u8>> {
 }
 
 /// Build the sleep control command bytes for a lighthouse.
+///
+/// # Errors
+///
+/// Returns an error if the lighthouse is V1 but has no ID set.
 pub fn build_sleep_command(lh: &Lighthouse) -> Result<Vec<u8>> {
     match lh.version() {
         LighthouseVersion::V1 => {
@@ -95,6 +111,10 @@ pub fn build_sleep_command(lh: &Lighthouse) -> Result<Vec<u8>> {
 }
 
 /// Build the identify command bytes for a lighthouse (V2 only).
+///
+/// # Errors
+///
+/// Returns an error if the lighthouse is V1, which does not support the identify command.
 pub fn build_identify_command(lh: &Lighthouse) -> Result<Vec<u8>> {
     match lh.version() {
         LighthouseVersion::V2 => Ok(build_v2_identify()),

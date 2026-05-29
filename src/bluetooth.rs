@@ -15,6 +15,11 @@ use crate::protocol;
 
 /// Discover nearby lighthouses by scanning BLE advertisements for a given duration.
 /// Filters results to only devices whose name starts with "HTC BS" or "LHB-".
+///
+/// # Errors
+///
+/// Returns an error if the BLE scan fails to start, stop, or retrieve peripherals,
+/// or if any underlying Bluetooth adapter operation fails.
 pub async fn discover_lighthouses(adapter: &Adapter, timeout_secs: u64) -> Result<Vec<Lighthouse>> {
     info!(
         "Starting Bluetooth LE discovery for {} seconds...",
@@ -75,6 +80,11 @@ async fn get_local_name(peripheral: &Peripheral) -> Option<String> {
 }
 
 /// Connect to a specific lighthouse by its Bluetooth address.
+///
+/// # Errors
+///
+/// Returns an error if the address is invalid, the peripheral is not found,
+/// or any BLE connection/discovery operation fails.
 pub async fn connect_lighthouse(
     adapter: &Adapter,
     address_str: &str,
@@ -170,6 +180,11 @@ impl ConnectedPeripheral {
     }
 
     /// Power on the connected lighthouse.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the power command cannot be built (e.g. missing V1 ID)
+    /// or if writing to the GATT characteristic fails after retries.
     pub async fn power_on(&self, lh: &Lighthouse) -> Result<()> {
         let cmd = protocol::build_power_command(lh).map_err(|e| anyhow!("{e}"))?;
         self.write_and_disconnect(lh.power_characteristic(), &cmd)
@@ -177,6 +192,11 @@ impl ConnectedPeripheral {
     }
 
     /// Sleep the connected lighthouse.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the sleep command cannot be built (e.g. missing V1 ID)
+    /// or if writing to the GATT characteristic fails after retries.
     pub async fn sleep(&self, lh: &Lighthouse) -> Result<()> {
         let cmd = protocol::build_sleep_command(lh).map_err(|e| anyhow!("{e}"))?;
         self.write_and_disconnect(lh.power_characteristic(), &cmd)
@@ -184,6 +204,11 @@ impl ConnectedPeripheral {
     }
 
     /// Identify the connected lighthouse (V2 only — causes LED flash).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the lighthouse is not V2, or if writing to the
+    /// identify characteristic fails after retries.
     pub async fn identify(&self, lh: &Lighthouse) -> Result<()> {
         protocol::build_identify_command(lh).map_err(|e| anyhow!("{e}"))?; // validates version
         let cmd = protocol::build_v2_identify();
@@ -206,6 +231,10 @@ impl ConnectedPeripheral {
 
 /// Start a BLE scan, poll until a predicate is satisfied (or timeout), then stop the scan.
 /// Returns the final set of discovered peripheral addresses (lowercase).
+///
+/// # Errors
+///
+/// Returns an error if the initial BLE scan fails to start.
 pub async fn scan_until_predicate<F>(adapter: &Adapter, predicate: F) -> Result<HashSet<String>>
 where
     F: Fn(&HashSet<String>) -> bool + Send,
@@ -252,6 +281,11 @@ where
 }
 
 /// Get the first available Bluetooth adapter. Returns an error if none found.
+///
+/// # Errors
+///
+/// Returns an error if the BLE manager cannot be created, no adapters are enumerated,
+/// or no adapters are available.
 pub async fn get_adapter() -> Result<Adapter> {
     let manager = Manager::new()
         .await

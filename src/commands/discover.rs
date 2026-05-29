@@ -5,6 +5,11 @@ use crate::{lighthouse::LighthouseVersion, storage};
 
 /// Discover nearby lighthouses and save them to the database.
 /// Newly discovered units are added unmanaged; existing entries are preserved (dedup by address).
+///
+/// # Errors
+///
+/// Returns an error if no Bluetooth adapter is available, BLE scanning fails,
+/// or the database cannot be loaded or saved.
 pub async fn run(timeout_secs: u64) -> Result<()> {
     let adapter = crate::bluetooth::get_adapter().await?;
 

@@ -52,12 +52,21 @@ fn save_at(path: &PathBuf, db: &LighthouseDatabase) -> Result<()> {
 }
 
 /// Load the database from disk (using the default config path). Returns empty DB if file doesn't exist.
+///
+/// # Errors
+///
+/// Returns an error if the config directory cannot be determined.
 pub fn load() -> Result<LighthouseDatabase> {
     let path = config_path()?;
     load_at(&path)
 }
 
 /// Save the database to disk (using the default config path).
+///
+/// # Errors
+///
+/// Returns an error if the config directory cannot be determined, the JSON cannot be serialized,
+/// or the file cannot be written.
 pub fn save(db: &LighthouseDatabase) -> Result<()> {
     let path = config_path()?;
     save_at(&path, db)
@@ -81,7 +90,7 @@ pub fn add_new(db: &mut LighthouseDatabase, discovered: &[Lighthouse]) -> usize 
 }
 
 /// Get all managed lighthouses.
-#[must_use] 
+#[must_use]
 pub fn managed_lighthouses(db: &LighthouseDatabase) -> Vec<&Lighthouse> {
     db.lighthouses.iter().filter(|l| l.managed).collect()
 }

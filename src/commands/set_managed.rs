@@ -1,4 +1,4 @@
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
 use tracing::info;
 
 use crate::storage;
@@ -29,6 +29,11 @@ fn parse_target(target: &str, db_len: usize) -> Result<IndexOrAll> {
 }
 
 /// Set the managed flag on one or all lighthouses.
+///
+/// # Errors
+///
+/// Returns an error if the database cannot be loaded, the target index is invalid,
+/// or the database cannot be saved.
 pub fn run(target: &str, managed: bool) -> Result<()> {
     let mut db = storage::load()?;
 

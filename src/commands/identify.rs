@@ -52,6 +52,11 @@ pub(super) async fn send_identify_command(adapter: &Adapter, lh: &Lighthouse) ->
 
 /// Identify a specific V2 lighthouse by index in the database.
 /// This causes the lighthouse to blink its LED for visual identification.
+///
+/// # Errors
+///
+/// Returns an error if the index is out of range, the lighthouse is not V2,
+/// the adapter cannot be found, the device is not discoverable, or the identify command fails.
 pub async fn run(index: usize) -> Result<()> {
     let lh = validate_lighthouse(index)?;
 
