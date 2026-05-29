@@ -3,6 +3,18 @@ name = "lighthouse-manager"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "lighthouse-manager"
+path = "src/cli/main.rs"
+
+[[bin]]
+name = "lighthouse-manager-ovr"
+path = "src/ovr/main.rs"
+
+[lib]
+name = "lighthouse_manager"
+path = "src/lib.rs"
+
 [dependencies]
 btleplug = "0.12"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }

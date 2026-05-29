@@ -1,11 +1,6 @@
-mod bluetooth;
-mod commands;
-mod lighthouse;
-mod protocol;
-mod storage;
-
 use anyhow::Result;
 use clap::{Parser, Subcommand, builder::BoolishValueParser};
+use lighthouse_manager::{bluetooth, commands};
 use tracing::{error, info};
 
 #[derive(Parser)]
