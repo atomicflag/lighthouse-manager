@@ -34,3 +34,6 @@ tempfile = "3"
 [profile.release]
 opt-level = 3
 strip = true
+
+[lints.clippy]
+pedantic = "warn"
