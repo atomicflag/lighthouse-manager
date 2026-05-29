@@ -3,9 +3,11 @@
 // inside dedicated functions so that `main` stays readable.
 // ---------------------------------------------------------------------------
 
-use std::{env, fs, path::PathBuf, thread, time::Duration};
+use std::{fs, path::PathBuf, thread, time::Duration};
 
+use lighthouse_manager::storage;
 use openvr_sys as sys;
+use tracing::{debug, error, info, warn};
 
 // ---------------------------------------------------------------------------
 // Application key — must match the one in manifest.vrmanifest exactly.
@@ -19,7 +21,14 @@ const APP_KEY: &str = "io.atomicflag.lighthouse-manager";
 const POLL_INTERVAL: Duration = Duration::from_millis(200);
 
 fn main() {
-    println!("[steamvr-companion] Starting up...");
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
+        )
+        .init();
+
+    info!("[steamvr-companion] Starting up...");
 
     // ------------------------------------------------------------------
     // 1. Initialise OpenVR in Background mode.
@@ -30,8 +39,8 @@ fn main() {
     let vr_system = match init_openvr() {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("[steamvr-companion] Failed to initialise OpenVR: {e}");
-            eprintln!(
+            error!("[steamvr-companion] Failed to initialise OpenVR: {}", e);
+            error!(
                 "Make sure SteamVR is running before launching this program for the first time."
             );
             std::process::exit(1);
@@ -43,18 +52,21 @@ fn main() {
     //    This only needs to happen once; subsequent launches skip it.
     // ------------------------------------------------------------------
     match register_manifest() {
-        Ok(already) if already => {
-            println!("[steamvr-companion] Already registered with SteamVR.");
+        Ok(true) => {
+            info!("[steamvr-companion] Already registered with SteamVR.");
         }
-        Ok(_) => {
-            println!(
+        Ok(false) => {
+            info!(
                 "[steamvr-companion] Successfully registered with SteamVR — auto-launch enabled."
             );
         }
         Err(e) => {
             // Non-fatal: the app still works this session, it just won't
             // auto-launch next time.
-            eprintln!("[steamvr-companion] Warning: could not register manifest: {e}");
+            warn!(
+                "[steamvr-companion] Warning: could not register manifest: {}",
+                e
+            );
         }
     }
 
@@ -72,25 +84,25 @@ fn main() {
     // 5. Shut down OpenVR cleanly before exiting.
     // ------------------------------------------------------------------
     unsafe { sys::VR_ShutdownInternal() };
-    println!("[steamvr-companion] Exited cleanly.");
+    info!("[steamvr-companion] Exited cleanly.");
 }
 
 // ---------------------------------------------------------------------------
 // Startup hook — called once, right after a successful OpenVR connection.
-// Replace the println! with whatever you need to do on SteamVR launch.
+// Replace the tracing call with whatever you need to do on SteamVR launch.
 // ---------------------------------------------------------------------------
 fn on_steamvr_started() {
-    println!("[steamvr-companion] >>> SteamVR has started! (on_steamvr_started hook)");
+    info!("[steamvr-companion] >>> SteamVR has started! (on_steamvr_started hook)");
     // TODO: add your startup logic here.
     // Examples: spawn background threads, connect to hardware, load config …
 }
 
 // ---------------------------------------------------------------------------
 // Shutdown hook — called once, when SteamVR signals it is about to quit.
-// Replace the println! with your own teardown logic.
+// Replace the tracing call with your own teardown logic.
 // ---------------------------------------------------------------------------
 fn on_steamvr_shutdown() {
-    println!("[steamvr-companion] >>> SteamVR is shutting down! (on_steamvr_shutdown hook)");
+    info!("[steamvr-companion] >>> SteamVR is shutting down! (on_steamvr_shutdown hook)");
     // TODO: add your shutdown logic here.
     // Examples: save state, disconnect hardware, flush logs …
 }
@@ -144,7 +156,7 @@ fn init_openvr() -> Result<*mut sys::VR_IVRSystem_FnTable, String> {
 // Returns Err(…)    on failure.
 // ---------------------------------------------------------------------------
 fn register_manifest() -> Result<bool, String> {
-    // Build the absolute path to manifest.vrmanifest, sitting next to the exe.
+    // Build the absolute path to manifest.vrmanifest in the local config dir.
     let manifest_path = manifest_path()?;
     let manifest_path_str = manifest_path
         .to_str()
@@ -199,7 +211,7 @@ fn register_manifest() -> Result<bool, String> {
 // arrives, then calls the shutdown hook and returns.
 // ---------------------------------------------------------------------------
 fn run_event_loop(vr_system: *mut sys::VR_IVRSystem_FnTable) {
-    println!("[steamvr-companion] Entering event loop — waiting for SteamVR events...");
+    info!("[steamvr-companion] Entering event loop — waiting for SteamVR events...");
 
     loop {
         // Poll all pending events before sleeping.
@@ -219,7 +231,7 @@ fn run_event_loop(vr_system: *mut sys::VR_IVRSystem_FnTable) {
             match event.eventType {
                 // SteamVR is quitting normally.
                 t if t == sys::EVREventType_VREvent_Quit => {
-                    println!("[steamvr-companion] Received VREvent_Quit.");
+                    info!("[steamvr-companion] Received VREvent_Quit.");
                     on_steamvr_shutdown();
                     // Acknowledge the quit so SteamVR doesn't hang waiting for us.
                     unsafe {
@@ -230,14 +242,14 @@ fn run_event_loop(vr_system: *mut sys::VR_IVRSystem_FnTable) {
 
                 // The driver requested a quit (e.g. crash recovery).
                 t if t == sys::EVREventType_VREvent_DriverRequestedQuit => {
-                    println!("[steamvr-companion] Received VREvent_DriverRequestedQuit.");
+                    info!("[steamvr-companion] Received VREvent_DriverRequestedQuit.");
                     on_steamvr_shutdown();
                     return;
                 }
 
-                // Log other events at trace level (remove or adjust as needed).
+                // Log other events at debug level (remove or adjust as needed).
                 other => {
-                    println!("[steamvr-companion] Event: type={other}");
+                    debug!("[steamvr-companion] Event: type={other}");
                 }
             }
         }
@@ -275,13 +287,10 @@ fn vr_init_error_to_string(err: sys::EVRInitError) -> String {
 }
 
 // ---------------------------------------------------------------------------
-// Helper: path to manifest.vrmanifest (next to the binary).
+// Helper: path to manifest.vrmanifest inside the config local directory.
 // ---------------------------------------------------------------------------
 fn manifest_path() -> Result<PathBuf, String> {
-    let exe = env::current_exe().map_err(|e| e.to_string())?;
-    let dir = exe
-        .parent()
-        .ok_or("Could not determine executable directory")?;
+    let dir = storage::config_local_dir().map_err(|e| e.to_string())?;
     Ok(dir.join("manifest.vrmanifest"))
 }
 
@@ -300,7 +309,7 @@ fn write_manifest_if_missing(path: &PathBuf) -> Result<(), String> {
     }
 
     // The binary path in the manifest must match the actual executable name.
-    let exe = env::current_exe().map_err(|e| e.to_string())?;
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
     let exe_name = exe
         .file_name()
         .and_then(|n| n.to_str())
@@ -330,6 +339,6 @@ fn write_manifest_if_missing(path: &PathBuf) -> Result<(), String> {
     );
 
     fs::write(path, manifest).map_err(|e| format!("Could not write manifest: {e}"))?;
-    println!("[steamvr-companion] Wrote manifest to: {}", path.display());
+    info!("[steamvr-companion] Wrote manifest to: {}", path.display());
     Ok(())
 }
