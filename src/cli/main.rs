@@ -3,8 +3,6 @@ use clap::{Parser, Subcommand, builder::BoolishValueParser};
 use lighthouse_manager::{bluetooth, commands};
 use tracing::{error, info};
 
-
-
 #[derive(Parser)]
 #[command(name = "lighthouse-manager")]
 #[command(version)]

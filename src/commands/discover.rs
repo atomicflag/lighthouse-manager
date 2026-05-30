@@ -47,7 +47,6 @@ pub async fn run(timeout_secs: u64) -> Result<()> {
 
     if new_count > 0 {
         info!("Use `lighthouse-manager list --managed` to see managed lighthouses.");
-        info!("Edit the database file to mark stations as managed.");
     }
 
     Ok(())

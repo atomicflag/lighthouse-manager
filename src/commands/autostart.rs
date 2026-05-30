@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use openvr_sys as sys;
 use std::fs;
 use std::path::PathBuf;

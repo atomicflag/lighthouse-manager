@@ -23,20 +23,20 @@ pub fn config_local_dir() -> Result<PathBuf> {
     Ok(dir.to_path_buf())
 }
 
-/// Path to the JSON database file, determined cross-platform via `directories`.
+/// Path to the JSON settings file, determined cross-platform via `directories`.
 fn config_path() -> Result<PathBuf> {
     let dir = config_local_dir()?;
-    Ok(dir.join("lighthouses.json"))
+    Ok(dir.join("settings.json"))
 }
 
-/// JSON database containing all known lighthouses.
+/// Application settings persisted to disk.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LighthouseDatabase {
+pub struct AppSettings {
     pub version: u32,
     pub lighthouses: Vec<Lighthouse>,
 }
 
-impl Default for LighthouseDatabase {
+impl Default for AppSettings {
     fn default() -> Self {
         Self {
             version: 1,
@@ -45,51 +45,55 @@ impl Default for LighthouseDatabase {
     }
 }
 
-/// Load the database from a specific path. Returns empty DB if file doesn't exist.
-fn load_at(path: &PathBuf) -> Result<LighthouseDatabase> {
+/// Load settings from a specific path. Returns defaults if file doesn't exist.
+fn load_at(path: &PathBuf) -> Result<AppSettings> {
     if !path.exists() {
-        return Ok(LighthouseDatabase::default());
+        return Ok(AppSettings::default());
     }
-    let content = fs::read_to_string(path).context("Failed to read lighthouse database")?;
-    let db: LighthouseDatabase =
-        serde_json::from_str(&content).context("Failed to parse lighthouse database JSON")?;
-    Ok(db)
+    let content = fs::read_to_string(path).context("Failed to read settings")?;
+    let settings: AppSettings =
+        serde_json::from_str(&content).context("Failed to parse settings JSON")?;
+    Ok(settings)
 }
 
-/// Save the database to a specific path.
-fn save_at(path: &PathBuf, db: &LighthouseDatabase) -> Result<()> {
-    let content = serde_json::to_string_pretty(db).context("Failed to serialize database")?;
-    fs::write(path, content).context("Failed to write lighthouse database")?;
+/// Save settings to a specific path.
+fn save_at(path: &PathBuf, settings: &AppSettings) -> Result<()> {
+    let content = serde_json::to_string_pretty(settings).context("Failed to serialize settings")?;
+    fs::write(path, content).context("Failed to write settings")?;
     Ok(())
 }
 
-/// Load the database from disk (using the default config path). Returns empty DB if file doesn't exist.
+/// Load settings from disk (using the default config path). Returns defaults if file doesn't exist.
 ///
 /// # Errors
 ///
 /// Returns an error if the config directory cannot be determined.
-pub fn load() -> Result<LighthouseDatabase> {
+pub fn load() -> Result<AppSettings> {
     let path = config_path()?;
     load_at(&path)
 }
 
-/// Save the database to disk (using the default config path).
+/// Save settings to disk (using the default config path).
 ///
 /// # Errors
 ///
 /// Returns an error if the config directory cannot be determined, the JSON cannot be serialized,
 /// or the file cannot be written.
-pub fn save(db: &LighthouseDatabase) -> Result<()> {
+pub fn save(settings: &AppSettings) -> Result<()> {
     let path = config_path()?;
-    save_at(&path, db)
+    save_at(&path, settings)
 }
 
-/// Add newly discovered lighthouses to the database.
+/// Add newly discovered lighthouses to the settings.
 /// - Newly discovered units are marked unmanaged (managed: false) by default.
 /// - Deduplication by Bluetooth address: if an entry already exists for this address, it is NOT overwritten.
 /// - Returns the count of new entries added.
-pub fn add_new(db: &mut LighthouseDatabase, discovered: &[Lighthouse]) -> usize {
-    let existing: HashSet<String> = db.lighthouses.iter().map(|l| l.address.clone()).collect();
+pub fn add_new(settings: &mut AppSettings, discovered: &[Lighthouse]) -> usize {
+    let existing: HashSet<String> = settings
+        .lighthouses
+        .iter()
+        .map(|l| l.address.clone())
+        .collect();
 
     let new_lhs: Vec<Lighthouse> = discovered
         .iter()
@@ -97,14 +101,14 @@ pub fn add_new(db: &mut LighthouseDatabase, discovered: &[Lighthouse]) -> usize 
         .cloned()
         .collect();
     let count = new_lhs.len();
-    db.lighthouses.extend(new_lhs);
+    settings.lighthouses.extend(new_lhs);
     count
 }
 
 /// Get all managed lighthouses.
 #[must_use]
-pub fn managed_lighthouses(db: &LighthouseDatabase) -> Vec<&Lighthouse> {
-    db.lighthouses.iter().filter(|l| l.managed).collect()
+pub fn managed_lighthouses(settings: &AppSettings) -> Vec<&Lighthouse> {
+    settings.lighthouses.iter().filter(|l| l.managed).collect()
 }
 
 #[cfg(test)]
@@ -112,25 +116,25 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
 
-    fn test_db_path() -> (PathBuf, tempfile::TempDir) {
+    fn test_settings_path() -> (PathBuf, tempfile::TempDir) {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("lighthouses.json");
+        let path = dir.path().join("settings.json");
         (path, dir)
     }
 
     #[test]
-    fn test_load_empty_db() {
-        let (path, _guard) = test_db_path();
-        let db = load_at(&path).unwrap();
-        assert!(db.lighthouses.is_empty());
-        assert_eq!(db.version, 1);
+    fn test_load_empty_settings() {
+        let (path, _guard) = test_settings_path();
+        let settings = load_at(&path).unwrap();
+        assert!(settings.lighthouses.is_empty());
+        assert_eq!(settings.version, 1);
     }
 
     #[test]
     fn test_save_and_load() {
-        let (path, _guard) = test_db_path();
+        let (path, _guard) = test_settings_path();
 
-        let db = LighthouseDatabase {
+        let settings = AppSettings {
             version: 1,
             lighthouses: vec![Lighthouse {
                 name: "LHB-0A1B2C3D".into(),
@@ -139,7 +143,7 @@ mod tests {
                 managed: true,
             }],
         };
-        save_at(&path, &db).unwrap();
+        save_at(&path, &settings).unwrap();
 
         let loaded = load_at(&path).unwrap();
         assert_eq!(loaded.lighthouses.len(), 1);
@@ -149,9 +153,9 @@ mod tests {
 
     #[test]
     fn test_add_new_deduplication() {
-        let (path, _guard) = test_db_path();
+        let (path, _guard) = test_settings_path();
 
-        let mut db = LighthouseDatabase {
+        let mut settings = AppSettings {
             version: 1,
             lighthouses: vec![Lighthouse {
                 name: "HTC BS-AABBCCDD".into(),
@@ -177,20 +181,20 @@ mod tests {
             },
         ];
 
-        let count = add_new(&mut db, &discovered);
+        let count = add_new(&mut settings, &discovered);
         assert_eq!(count, 1); // Only the new address was added
-        assert_eq!(db.lighthouses.len(), 2);
+        assert_eq!(settings.lighthouses.len(), 2);
         // Original entry preserved (not overwritten by discovered)
-        assert_eq!(db.lighthouses[0].name, "HTC BS-AABBCCDD");
+        assert_eq!(settings.lighthouses[0].name, "HTC BS-AABBCCDD");
 
-        save_at(&path, &db).ok();
+        save_at(&path, &settings).ok();
     }
 
     #[test]
     fn test_newly_discovered_are_unmanaged() {
-        let (path, _guard) = test_db_path();
+        let (path, _guard) = test_settings_path();
 
-        let mut db = LighthouseDatabase::default();
+        let mut settings = AppSettings::default();
         let discovered = vec![Lighthouse {
             name: "LHB-0A1B2C3D".into(),
             address: "AA:BB:CC:DD:EE:FF".into(),
@@ -198,16 +202,16 @@ mod tests {
             managed: false, // BLE scan always produces unmanaged lighthouses
         }];
 
-        add_new(&mut db, &discovered);
+        add_new(&mut settings, &discovered);
 
-        assert!(!db.lighthouses[0].managed);
+        assert!(!settings.lighthouses[0].managed);
 
-        save_at(&path, &db).ok();
+        save_at(&path, &settings).ok();
     }
 
     #[test]
     fn test_managed_lighthouses_filter() {
-        let db = LighthouseDatabase {
+        let settings = AppSettings {
             version: 1,
             lighthouses: vec![
                 Lighthouse {
@@ -231,15 +235,15 @@ mod tests {
             ],
         };
 
-        let managed = managed_lighthouses(&db);
+        let managed = managed_lighthouses(&settings);
         assert_eq!(managed.len(), 2);
         assert_eq!(managed[0].name, "LHB-0000");
         assert_eq!(managed[1].name, "LHB-2222");
     }
 
     #[test]
-    fn test_serde_roundtrip_database() {
-        let db = LighthouseDatabase {
+    fn test_serde_roundtrip() {
+        let settings = AppSettings {
             version: 1,
             lighthouses: vec![
                 Lighthouse {
@@ -257,8 +261,8 @@ mod tests {
             ],
         };
 
-        let json = serde_json::to_string_pretty(&db).unwrap();
-        let restored: LighthouseDatabase = serde_json::from_str(&json).unwrap();
+        let json = serde_json::to_string_pretty(&settings).unwrap();
+        let restored: AppSettings = serde_json::from_str(&json).unwrap();
         assert_eq!(restored.version, 1);
         assert_eq!(restored.lighthouses.len(), 2);
     }

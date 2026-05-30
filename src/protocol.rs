@@ -1,6 +1,6 @@
 /// Protocol helpers for building Lighthouse power control commands.
 use crate::lighthouse::{Lighthouse, LighthouseVersion};
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 /// Build the power-on command bytes for a V1 lighthouse.
 /// Format: [0x12, 0x00, 0x00, 0x00] + reversed ID bytes (4) + [0x00; 12] = 20 bytes total.
