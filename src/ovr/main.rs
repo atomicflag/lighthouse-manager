@@ -1,6 +1,7 @@
-use std::{thread, time::Duration};
+use std::{thread, time::Duration, time::SystemTime};
 
 use lighthouse_manager::commands::power::{power_off, power_on};
+use lighthouse_manager::storage::{load as load_settings, save as save_settings};
 use openvr::{ApplicationType, init, system::event::Event};
 use tokio::runtime::Runtime;
 use tracing::{debug, error, info};
@@ -46,6 +47,23 @@ fn on_steamvr_started() {
         return;
     };
 
+    // Check cooldown window before turning lighthouses on.
+    let now_secs = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
+    if let Ok(settings) = load_settings()
+        && let Some(last_off) = settings.autostart.last_turned_off_at
+    {
+        let cooldown_end = last_off + settings.autostart.cooldown_secs;
+        let remaining = cooldown_end.saturating_sub(now_secs);
+        if now_secs < cooldown_end {
+            debug!("Skipping power on — {remaining}s remaining in cooldown window");
+            return;
+        }
+    }
+
     if let Err(e) = rt.block_on(power_on()) {
         error!("Failed to power on lighthouses: {e}");
     }
@@ -60,6 +78,20 @@ fn on_steamvr_shutdown() {
 
     if let Err(e) = rt.block_on(power_off()) {
         error!("Failed to power off lighthouses: {e}");
+        return;
+    }
+
+    // Update last_turned_off_at in settings after a successful shutdown.
+    let now_secs = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
+    if let Ok(mut settings) = load_settings() {
+        settings.autostart.last_turned_off_at = Some(now_secs);
+        if let Err(e) = save_settings(&settings) {
+            error!("Failed to save updated settings: {e}");
+        }
     }
 }
 
