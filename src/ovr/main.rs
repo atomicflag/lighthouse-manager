@@ -7,7 +7,7 @@ use openvr_sys as sys;
 use tracing::{debug, error, info};
 
 // How long to sleep between event-poll iterations (keeps CPU usage negligible).
-const POLL_INTERVAL: Duration = Duration::from_millis(200);
+const POLL_INTERVAL: Duration = Duration::from_secs(5);
 
 fn main() {
     tracing_subscriber::fmt()
@@ -17,16 +17,13 @@ fn main() {
         )
         .init();
 
-    info!("[steamvr-companion] Starting up...");
+    info!("Starting up...");
 
     // Initialise OpenVR in Background mode (no rendering, no HMD required).
     let vr_system = match init_openvr() {
         Ok(s) => s,
         Err(e) => {
-            error!("[steamvr-companion] Failed to initialise OpenVR: {}", e);
-            error!(
-                "Make sure SteamVR is running before launching this program for the first time."
-            );
+            error!("Failed to initialise OpenVR: {}", e);
             std::process::exit(1);
         }
     };
@@ -39,19 +36,19 @@ fn main() {
 
     // Shut down OpenVR cleanly before exiting.
     unsafe { sys::VR_ShutdownInternal() };
-    info!("[steamvr-companion] Exited cleanly.");
+    info!("Exited cleanly.");
 }
 
 /// Startup hook — called once, right after a successful `OpenVR` connection.
 fn on_steamvr_started() {
-    info!("[steamvr-companion] >>> SteamVR has started! (on_steamvr_started hook)");
+    info!(">>> SteamVR has started! (on_steamvr_started hook)");
     // TODO: add your startup logic here.
     // Examples: spawn background threads, connect to hardware, load config …
 }
 
 /// Shutdown hook — called once, when `SteamVR` signals it is about to quit.
 fn on_steamvr_shutdown() {
-    info!("[steamvr-companion] >>> SteamVR is shutting down! (on_steamvr_shutdown hook)");
+    info!(">>> SteamVR is shutting down! (on_steamvr_shutdown hook)");
     // TODO: add your shutdown logic here.
     // Examples: save state, disconnect hardware, flush logs …
 }
@@ -99,7 +96,7 @@ fn init_openvr() -> Result<*mut sys::VR_IVRSystem_FnTable, String> {
 /// Main event loop. Polls `OpenVR` events at `POLL_INTERVAL` until a quit event
 /// arrives, then calls the shutdown hook and returns.
 fn run_event_loop(vr_system: *mut sys::VR_IVRSystem_FnTable) {
-    info!("[steamvr-companion] Entering event loop — waiting for SteamVR events...");
+    info!("Entering event loop — waiting for SteamVR events...");
 
     loop {
         // Poll all pending events before sleeping.
@@ -119,7 +116,7 @@ fn run_event_loop(vr_system: *mut sys::VR_IVRSystem_FnTable) {
             match event.eventType {
                 // SteamVR is quitting normally.
                 t if t == sys::EVREventType_VREvent_Quit => {
-                    info!("[steamvr-companion] Received VREvent_Quit.");
+                    info!("Received VREvent_Quit.");
                     on_steamvr_shutdown();
                     // Acknowledge the quit so SteamVR doesn't hang waiting for us.
                     unsafe {
@@ -130,14 +127,14 @@ fn run_event_loop(vr_system: *mut sys::VR_IVRSystem_FnTable) {
 
                 // The driver requested a quit (e.g. crash recovery).
                 t if t == sys::EVREventType_VREvent_DriverRequestedQuit => {
-                    info!("[steamvr-companion] Received VREvent_DriverRequestedQuit.");
+                    info!("Received VREvent_DriverRequestedQuit.");
                     on_steamvr_shutdown();
                     return;
                 }
 
                 // Log other events at debug level (remove or adjust as needed).
                 other => {
-                    debug!("[steamvr-companion] Event: type={other}");
+                    debug!("Event: type={other}");
                 }
             }
         }

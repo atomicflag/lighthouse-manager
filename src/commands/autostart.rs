@@ -19,7 +19,7 @@ const APP_KEY: &str = "io.atomicflag.lighthouse-manager";
 ///   4. Enable auto-launch.
 ///   5. Shut down `OpenVR`.
 pub fn enable() -> Result<()> {
-    let _init = OpenVrInit::new()?;
+    let _init = OpenVrInit::try_new()?;
 
     let manifest_path = manifest_path()?;
 
@@ -87,7 +87,7 @@ pub fn run(action: &str) -> Result<()> {
 ///   3. Remove manifest from `SteamVR` registry (file left on disk).
 ///   4. Shut down `OpenVR`.
 pub fn disable() -> Result<()> {
-    let _init = OpenVrInit::new()?;
+    let _init = OpenVrInit::try_new()?;
 
     let app_key_c = std::ffi::CString::new(APP_KEY).unwrap();
 
@@ -135,12 +135,12 @@ impl Drop for OpenVrInit {
 
 impl OpenVrInit {
     /// Initialise the `OpenVR` runtime. Returns None if init fails.
-    fn new() -> Result<Self, anyhow::Error> {
+    fn try_new() -> Result<Self, anyhow::Error> {
         let mut vr_error = sys::EVRInitError_VRInitError_None;
 
         // SAFETY: VR_InitInternal is safe to call with a valid error pointer
         // and a known application-type constant.
-        unsafe {
+        let token = unsafe {
             sys::VR_InitInternal(
                 &raw mut vr_error,
                 sys::EVRApplicationType_VRApplication_Background,
@@ -150,6 +150,10 @@ impl OpenVrInit {
         if vr_error != sys::EVRInitError_VRInitError_None {
             let msg = vr_init_error_to_string(vr_error);
             return Err(anyhow!("Failed to initialise OpenVR: {msg}"));
+        }
+
+        if token == 0 {
+            return Err(anyhow!("VR_InitInternal returned a null token"));
         }
 
         Ok(OpenVrInit)
@@ -213,8 +217,8 @@ fn write_manifest_if_missing(path: &PathBuf) -> Result<(), anyhow::Error> {
       "is_dashboard_overlay": true,
       "strings": {{
         "en_us": {{
-          "name": "SteamVR Companion",
-          "description": "A minimal companion app with startup/shutdown hooks."
+          "name": "Lighthouse Manager",
+          "description": "Tool that lets you discover, power on/off, and identify SteamVR Lighthouse base stations wirelessly via Bluetooth Low Energy."
         }}
       }}
     }}
