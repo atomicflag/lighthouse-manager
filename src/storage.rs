@@ -29,11 +29,32 @@ fn config_path() -> Result<PathBuf> {
     Ok(dir.join("settings.json"))
 }
 
+/// Autostart-related settings.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Autostart {
+    /// Cooldown period in seconds after powering lighthouses off. If `SteamVR` is launched
+    /// within this window, lighthouses won't be turned on to avoid frequent toggling.
+    pub cooldown_secs: u64,
+    /// Unix timestamp (seconds) of when the lighthouses were last turned off.
+    pub last_turned_off_at: Option<u64>,
+}
+
+impl Default for Autostart {
+    fn default() -> Self {
+        Self {
+            cooldown_secs: 30,
+            last_turned_off_at: None,
+        }
+    }
+}
+
 /// Application settings persisted to disk.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
     pub version: u32,
     pub lighthouses: Vec<Lighthouse>,
+    #[serde(default)]
+    pub autostart: Autostart,
 }
 
 impl Default for AppSettings {
@@ -41,6 +62,7 @@ impl Default for AppSettings {
         Self {
             version: 1,
             lighthouses: Vec::new(),
+            autostart: Autostart::default(),
         }
     }
 }
@@ -142,6 +164,7 @@ mod tests {
                 id: None,
                 managed: true,
             }],
+            ..Default::default()
         };
         save_at(&path, &settings).unwrap();
 
@@ -163,6 +186,7 @@ mod tests {
                 id: Some("AABBCCDD".into()),
                 managed: true,
             }],
+            ..Default::default()
         };
 
         // Discover same device (should be deduplicated) and a new one
@@ -233,6 +257,7 @@ mod tests {
                     managed: true,
                 },
             ],
+            ..Default::default()
         };
 
         let managed = managed_lighthouses(&settings);
@@ -259,6 +284,7 @@ mod tests {
                     managed: false,
                 },
             ],
+            ..Default::default()
         };
 
         let json = serde_json::to_string_pretty(&settings).unwrap();

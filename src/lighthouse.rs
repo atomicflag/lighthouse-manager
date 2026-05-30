@@ -137,6 +137,7 @@ mod tests {
         let settings = storage::AppSettings {
             version: 1,
             lighthouses: vec![lh1.clone(), lh2.clone()],
+            ..Default::default()
         };
         let json = serde_json::to_string_pretty(&settings).unwrap();
         let restored: storage::AppSettings = serde_json::from_str(&json).unwrap();
