@@ -135,7 +135,7 @@ impl Drop for OpenVrInit {
 
 impl OpenVrInit {
     /// Initialise the `OpenVR` runtime. Returns None if init fails.
-    fn try_new() -> Result<Self, anyhow::Error> {
+    fn try_new() -> Result<Self> {
         let mut vr_error = sys::EVRInitError_VRInitError_None;
 
         // SAFETY: VR_InitInternal is safe to call with a valid error pointer
@@ -171,7 +171,7 @@ fn vr_init_error_to_string(err: sys::EVRInitError) -> String {
 }
 
 // Get the IVRApplications function table pointer.
-fn get_vr_applications_table() -> Result<*mut sys::VR_IVRApplications_FnTable, anyhow::Error> {
+fn get_vr_applications_table() -> Result<*mut sys::VR_IVRApplications_FnTable> {
     let iface = std::ffi::CString::new(sys::IVRApplications_Version).unwrap();
     let mut err = sys::EVRInitError_VRInitError_None;
     let ptr = unsafe { sys::VR_GetGenericInterface(iface.as_ptr(), &raw mut err) };
@@ -185,14 +185,14 @@ fn get_vr_applications_table() -> Result<*mut sys::VR_IVRApplications_FnTable, a
 }
 
 // Path to manifest.vrmanifest inside the config local directory.
-fn manifest_path() -> Result<PathBuf, anyhow::Error> {
+fn manifest_path() -> Result<PathBuf> {
     let dir = storage::config_local_dir().context("Could not determine config directory")?;
     Ok(dir.join("manifest.vrmanifest"))
 }
 
 // Write the vrmanifest to disk if it doesn't already exist.
 // Uses the -ovr binary name, derived from the CLI executable's location.
-fn write_manifest_if_missing(path: &PathBuf) -> Result<(), anyhow::Error> {
+fn write_manifest_if_missing(path: &PathBuf) -> Result<()> {
     if path.exists() {
         return Ok(()); // Already written on a previous run.
     }
@@ -234,7 +234,7 @@ fn write_manifest_if_missing(path: &PathBuf) -> Result<(), anyhow::Error> {
 
 // Construct the path to the -ovr binary by deriving it from the CLI exe.
 // Both executables are expected to live in the same directory.
-fn ovr_binary_path() -> Result<PathBuf, anyhow::Error> {
+fn ovr_binary_path() -> Result<PathBuf> {
     let cli_exe = std::env::current_exe().context("Could not determine current executable path")?;
 
     let parent = cli_exe.parent().ok_or_else(|| {
