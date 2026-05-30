@@ -110,6 +110,18 @@ lighthouse-manager identify 0
 lighthouse-manager blink 0
 ```
 
+### Autostart (SteamVR)
+
+Automatically turn your lighthouses on when SteamVR starts and power them off when it shuts down. Configure once so you never have to think about base stations again.
+
+```bash
+# Enable — lighthouses turn on when SteamVR launches, off when it exits
+lighthouse-manager autostart on
+
+# Disable — reverts to manual control only
+lighthouse-manager autostart off
+```
+
 ### Logging
 
 Control verbosity globally with `-v` / `-vv`, or use `RUST_LOG`:
@@ -127,12 +139,17 @@ RUST_LOG=lighthouse_manager=trace lighthouse-manager discover
 
 ```
 src/
-├── main.rs              # CLI entry point (clap Parser + subcommand dispatch)
+├── lib.rs               # Library crate (re-exports modules)
+├── cli/                 # CLI binary entry point (clap Parser + subcommand dispatch)
+│   └── main.rs
+├── ovr/                 # Companion SteamVR binary (auto-launch target)
+│   └── main.rs
 ├── bluetooth.rs         # Bluetooth adapter management via btleplug
 ├── lighthouse.rs        # Lighthouse device model & version detection
 ├── protocol.rs          # BLE GATT communication protocol layer
 ├── storage.rs           # Local JSON database (XDG-compliant paths)
 └── commands/
+    ├── autostart.rs     # Auto-on/off lighthouses when SteamVR starts/stops
     ├── discover.rs       # BLE scan → save discovered units
     ├── list.rs           # Database listing with filtering
     ├── set_managed.rs    # Set managed/unmanaged status by index or "all"
