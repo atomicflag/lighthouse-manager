@@ -12,6 +12,16 @@ const APP_KEY: &str = "io.atomicflag.lighthouse-manager";
 
 /// Enable `SteamVR` autostart for the lighthouse-manager-ovr binary.
 ///
+/// # Errors
+///
+/// Returns an error if `OpenVR` initialisation fails, the manifest cannot be
+/// written, or any `SteamVR` API call returns a non-success error code.
+///
+/// # Panics
+///
+/// Panics if `APP_KEY` contains a null byte (highly unlikely for a string
+/// literal).
+///
 /// Steps:
 ///   1. Initialise `OpenVR`.
 ///   2. Write the manifest file (skip if it already exists).
@@ -67,6 +77,11 @@ pub fn enable() -> Result<()> {
 }
 
 /// Run the autostart command — either enable or disable based on `action`.
+///
+/// # Errors
+///
+/// Returns an error if `action` is not `'on'` or `'off'`, or if the
+/// underlying enable/disable operation fails.
 pub fn run(action: &str) -> Result<()> {
     match action {
         "on" => enable(),
@@ -76,6 +91,16 @@ pub fn run(action: &str) -> Result<()> {
 }
 
 /// Disable `SteamVR` autostart for the lighthouse-manager-ovr binary.
+///
+/// # Errors
+///
+/// Returns an error if `OpenVR` initialisation fails, or any `SteamVR` API call
+/// returns a non-success error code.
+///
+/// # Panics
+///
+/// Panics if `APP_KEY` contains a null byte (highly unlikely for a string
+/// literal).
 ///
 /// Steps:
 ///   1. Initialise `OpenVR`.

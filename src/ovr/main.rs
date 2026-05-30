@@ -106,6 +106,7 @@ fn init_openvr() -> Result<*mut sys::VR_IVRSystem_FnTable> {
 
 /// Main event loop. Polls `OpenVR` events at `POLL_INTERVAL` until a quit event
 /// arrives, then calls the shutdown hook and returns.
+#[allow(clippy::cast_possible_truncation)]
 fn run_event_loop(vr_system: *mut sys::VR_IVRSystem_FnTable) {
     info!("Entering event loop — waiting for SteamVR events...");
 
