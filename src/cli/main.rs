@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand, builder::BoolishValueParser};
 use lighthouse_manager::{bluetooth, commands};
 use tracing::{error, info};
 
-mod autostart;
+
 
 #[derive(Parser)]
 #[command(name = "lighthouse-manager")]
@@ -105,10 +105,7 @@ async fn main() -> Result<()> {
         Command::PowerOff => commands::power::power_off().await,
         Command::Identify { index } => commands::identify::run(index).await,
         Command::SetManaged { target, managed } => commands::set_managed::run(&target, managed),
-        Command::Autostart { action } => {
-            let args = autostart::AutostartArgs { action };
-            autostart::run(&args)
-        }
+        Command::Autostart { action } => commands::autostart::run(&action),
     };
 
     if let Err(e) = &result {

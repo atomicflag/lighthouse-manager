@@ -72,6 +72,15 @@ pub fn enable() -> Result<()> {
     Ok(())
 }
 
+/// Run the autostart command — either enable or disable based on `action`.
+pub fn run(action: &str) -> Result<()> {
+    match action {
+        "on" => enable(),
+        "off" => disable(),
+        other => Err(anyhow!("Invalid action '{other}'. Expected 'on' or 'off'.")),
+    }
+}
+
 /// Disable `SteamVR` autostart for the lighthouse-manager-ovr binary.
 ///
 /// Steps:
