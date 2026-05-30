@@ -20,6 +20,7 @@ Control SteamVR Lighthouse base stations (V1 & V2) via Bluetooth LE from the com
 - 💡 **Identify (blink)** — Make a V2 Lighthouse flash its LED by index
 - 💾 **Persistent storage** — Database backed by a local JSON file (via XDG dirs)
 - ✅ **Cross-platform** — Linux, macOS, and Windows (requires BLE adapter)
+- 🔄 **Autostart (SteamVR)** — Auto-power lighthouses on SteamVR launch, off on exit
 
 ## Installation
 
