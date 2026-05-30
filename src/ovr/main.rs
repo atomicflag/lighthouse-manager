@@ -1,7 +1,7 @@
 use std::{thread, time::Duration};
 
 use lighthouse_manager::commands::power::{power_off, power_on};
-use openvr::{ApplicationType, init};
+use openvr::{ApplicationType, init, system::event::Event};
 use tokio::runtime::Runtime;
 use tracing::{debug, error, info};
 
@@ -72,7 +72,7 @@ fn run_event_loop(system: &openvr::System, _context: &openvr::Context) {
         while let Some(event_info) = system.poll_next_event() {
             match event_info.event {
                 // SteamVR is quitting normally.
-                openvr::system::event::Event::Quit(_) => {
+                Event::Quit(_) => {
                     info!("Received VREvent_Quit.");
                     on_steamvr_shutdown();
                     // Acknowledge the quit so SteamVR doesn't hang waiting for us.
@@ -81,7 +81,7 @@ fn run_event_loop(system: &openvr::System, _context: &openvr::Context) {
                 }
 
                 // The driver requested a quit (e.g. crash recovery).
-                openvr::system::event::Event::DriverRequestedQuit => {
+                Event::DriverRequestedQuit => {
                     info!("Received VREvent_DriverRequestedQuit.");
                     on_steamvr_shutdown();
                     return;
