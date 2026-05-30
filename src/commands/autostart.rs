@@ -29,7 +29,7 @@ const APP_KEY: &str = "io.atomicflag.lighthouse-manager";
 ///   4. Enable auto-launch.
 ///   5. Shut down `OpenVR`.
 pub fn enable() -> Result<()> {
-    let _init = OpenVrInit::try_new()?;
+    let _init = OpenVrInit::new()?;
 
     let manifest_path = manifest_path()?;
 
@@ -108,7 +108,7 @@ pub fn run(action: &str) -> Result<()> {
 ///   3. Remove manifest from `SteamVR` registry (file left on disk).
 ///   4. Shut down `OpenVR`.
 pub fn disable() -> Result<()> {
-    let _init = OpenVrInit::try_new()?;
+    let _init = OpenVrInit::new()?;
 
     let app_key_c = std::ffi::CString::new(APP_KEY).unwrap();
 
@@ -152,7 +152,7 @@ impl Drop for OpenVrInit {
 
 impl OpenVrInit {
     /// Initialise the `OpenVR` runtime. Returns None if init fails.
-    fn try_new() -> Result<Self> {
+    fn new() -> Result<Self> {
         let mut vr_error = sys::EVRInitError_VRInitError_None;
 
         // SAFETY: VR_InitInternal is safe to call with a valid error pointer
