@@ -42,7 +42,7 @@ pub struct Autostart {
 impl Default for Autostart {
     fn default() -> Self {
         Self {
-            cooldown_secs: 30,
+            cooldown_secs: 600,
             last_turned_off_at: None,
         }
     }
