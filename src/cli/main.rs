@@ -78,14 +78,13 @@ async fn main() -> Result<()> {
         _ => "lighthouse_manager=trace",
     };
 
-    let builder = tracing_subscriber::fmt()
+    tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(filter)),
         )
-        .event_format(tracing_subscriber::fmt::format().with_target(false));
-
-    builder.init();
+        .event_format(tracing_subscriber::fmt::format().with_target(false))
+        .init();
 
     // Verify Bluetooth adapter is available (early check)
     match bluetooth::get_adapter().await {

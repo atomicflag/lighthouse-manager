@@ -3,6 +3,7 @@
 
 use std::{thread, time::Duration};
 
+use anyhow::{Context, Result, bail};
 use openvr_sys as sys;
 use tracing::{debug, error, info};
 
@@ -15,18 +16,16 @@ fn main() {
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
         )
+        .event_format(tracing_subscriber::fmt::format().with_target(false))
         .init();
 
     info!("Starting up...");
 
     // Initialise OpenVR in Background mode (no rendering, no HMD required).
-    let vr_system = match init_openvr() {
-        Ok(s) => s,
-        Err(e) => {
-            error!("Failed to initialise OpenVR: {}", e);
-            std::process::exit(1);
-        }
-    };
+    let vr_system = init_openvr().unwrap_or_else(|e| {
+        error!("Failed to initialise OpenVR: {e}");
+        std::process::exit(1);
+    });
 
     // Fire the startup hook once OpenVR is connected.
     on_steamvr_started();
@@ -55,7 +54,7 @@ fn on_steamvr_shutdown() {
 
 /// Initialise the `OpenVR` runtime.
 /// Returns a raw pointer to `IVRSystem` (only used to call `PollNextEvent` on it).
-fn init_openvr() -> Result<*mut sys::VR_IVRSystem_FnTable, String> {
+fn init_openvr() -> Result<*mut sys::VR_IVRSystem_FnTable> {
     let mut vr_error = sys::EVRInitError_VRInitError_None;
 
     // SAFETY: VR_InitInternal is safe to call as long as we pass a valid
@@ -68,26 +67,26 @@ fn init_openvr() -> Result<*mut sys::VR_IVRSystem_FnTable, String> {
     };
 
     if vr_error != sys::EVRInitError_VRInitError_None {
-        let msg = vr_init_error_to_string(vr_error);
-        return Err(msg);
+        bail!(
+            "VR_InitInternal failed: {}",
+            vr_init_error_to_string(vr_error)
+        );
     }
 
     if token == 0 {
-        return Err("VR_InitInternal returned a null token".to_string());
+        bail!("VR_InitInternal returned a null token");
     }
 
     // Obtain the IVRSystem function table.
     // The interface version string is defined in the openvr_sys crate.
-    let iface_version = std::ffi::CString::new(sys::IVRSystem_Version).expect("CString");
+    let iface_version = std::ffi::CString::new(sys::IVRSystem_Version).context("CString")?;
     let mut err2 = sys::EVRInitError_VRInitError_None;
 
     // SAFETY: VR_GetGenericInterface is safe given a valid token and version.
     let ptr = unsafe { sys::VR_GetGenericInterface(iface_version.as_ptr(), &raw mut err2) };
 
     if ptr == 0 {
-        return Err(format!(
-            "VR_GetGenericInterface returned null (error {err2})"
-        ));
+        bail!("VR_GetGenericInterface returned null (error {err2})");
     }
 
     Ok(ptr as *mut sys::VR_IVRSystem_FnTable)

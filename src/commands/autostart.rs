@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result, anyhow, bail};
 use openvr_sys as sys;
 use std::fs;
 use std::path::PathBuf;
@@ -48,9 +48,7 @@ pub fn enable() -> Result<()> {
         };
 
         if app_error != sys::EVRApplicationError_VRApplicationError_None {
-            return Err(anyhow::anyhow!(
-                "AddApplicationManifest failed with error code {app_error}"
-            ));
+            bail!("AddApplicationManifest failed with error code {app_error}");
         }
     }
 
@@ -61,9 +59,7 @@ pub fn enable() -> Result<()> {
     };
 
     if auto_launch_error != sys::EVRApplicationError_VRApplicationError_None {
-        return Err(anyhow::anyhow!(
-            "SetApplicationAutoLaunch failed with error code {auto_launch_error}"
-        ));
+        bail!("SetApplicationAutoLaunch failed with error code {auto_launch_error}");
     }
 
     info!("Autostart enabled — lighthouse-manager-ovr will launch with SteamVR.");
@@ -98,9 +94,7 @@ pub fn disable() -> Result<()> {
     };
 
     if auto_launch_error != sys::EVRApplicationError_VRApplicationError_None {
-        return Err(anyhow::anyhow!(
-            "SetApplicationAutoLaunch failed with error code {auto_launch_error}"
-        ));
+        bail!("SetApplicationAutoLaunch failed with error code {auto_launch_error}");
     }
 
     // Remove manifest from SteamVR (does not delete the file on disk).
@@ -115,9 +109,7 @@ pub fn disable() -> Result<()> {
     };
 
     if remove_error != sys::EVRApplicationError_VRApplicationError_None {
-        return Err(anyhow::anyhow!(
-            "RemoveApplicationManifest failed with error code {remove_error}"
-        ));
+        bail!("RemoveApplicationManifest failed with error code {remove_error}");
     }
 
     info!("Autostart disabled — lighthouse-manager-ovr will no longer launch with SteamVR.");
