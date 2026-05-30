@@ -4,7 +4,9 @@
 use std::{thread, time::Duration};
 
 use anyhow::{Context, Result, bail};
+use lighthouse_manager::commands::power::{power_off, power_on};
 use openvr_sys as sys;
+use tokio::runtime::Runtime;
 use tracing::{debug, error, info};
 
 // How long to sleep between event-poll iterations (keeps CPU usage negligible).
@@ -40,16 +42,26 @@ fn main() {
 
 /// Startup hook — called once, right after a successful `OpenVR` connection.
 fn on_steamvr_started() {
-    info!(">>> SteamVR has started! (on_steamvr_started hook)");
-    // TODO: add your startup logic here.
-    // Examples: spawn background threads, connect to hardware, load config …
+    let Ok(rt) = Runtime::new() else {
+        error!("Failed to init tokio runtime");
+        return;
+    };
+
+    if let Err(e) = rt.block_on(power_on()) {
+        error!("Failed to power on lighthouses: {e}");
+    }
 }
 
 /// Shutdown hook — called once, when `SteamVR` signals it is about to quit.
 fn on_steamvr_shutdown() {
-    info!(">>> SteamVR is shutting down! (on_steamvr_shutdown hook)");
-    // TODO: add your shutdown logic here.
-    // Examples: save state, disconnect hardware, flush logs …
+    let Ok(rt) = Runtime::new() else {
+        error!("Failed to init tokio runtime");
+        return;
+    };
+
+    if let Err(e) = rt.block_on(power_off()) {
+        error!("Failed to power off lighthouses: {e}");
+    }
 }
 
 /// Initialise the `OpenVR` runtime.
