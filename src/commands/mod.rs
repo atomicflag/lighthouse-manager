@@ -1,3 +1,4 @@
+pub mod autostart;
 pub mod discover;
 pub mod identify;
 pub mod list;

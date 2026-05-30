@@ -3,6 +3,8 @@ use clap::{Parser, Subcommand, builder::BoolishValueParser};
 use lighthouse_manager::{bluetooth, commands};
 use tracing::{error, info};
 
+mod autostart;
+
 #[derive(Parser)]
 #[command(name = "lighthouse-manager")]
 #[command(version)]
@@ -59,6 +61,12 @@ enum Command {
         #[arg(action = clap::ArgAction::Set, value_parser = BoolishValueParser::new())]
         managed: bool,
     },
+
+    /// Enable or disable `SteamVR` autostart for the companion binary.
+    Autostart {
+        /// "on" to enable autostart, "off" to disable it.
+        action: String,
+    },
 }
 
 #[tokio::main]
@@ -97,6 +105,10 @@ async fn main() -> Result<()> {
         Command::PowerOff => commands::power::power_off().await,
         Command::Identify { index } => commands::identify::run(index).await,
         Command::SetManaged { target, managed } => commands::set_managed::run(&target, managed),
+        Command::Autostart { action } => {
+            let args = autostart::AutostartArgs { action };
+            autostart::run(&args)
+        }
     };
 
     if let Err(e) = &result {
