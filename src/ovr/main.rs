@@ -1,16 +1,12 @@
-// ---------------------------------------------------------------------------
-// Safety note: the entire OpenVR C API is `unsafe`.  We isolate all FFI calls
-// inside dedicated functions so that `main` stays readable.
-// ---------------------------------------------------------------------------
+// The entire OpenVR C API is `unsafe` — we isolate all FFI calls inside
+// dedicated functions so that `main` stays readable.
 
 use std::{thread, time::Duration};
 
 use openvr_sys as sys;
 use tracing::{debug, error, info};
 
-// ---------------------------------------------------------------------------
 // How long to sleep between event-poll iterations (keeps CPU usage negligible).
-// ---------------------------------------------------------------------------
 const POLL_INTERVAL: Duration = Duration::from_millis(200);
 
 fn main() {
@@ -23,12 +19,7 @@ fn main() {
 
     info!("[steamvr-companion] Starting up...");
 
-    // ------------------------------------------------------------------
-    // 1. Initialise OpenVR in Background mode.
-    //    VRApplication_Background means we do NOT render anything and we
-    //    do NOT require an HMD to be connected.  This is the correct mode
-    //    for utility/companion processes.
-    // ------------------------------------------------------------------
+    // Initialise OpenVR in Background mode (no rendering, no HMD required).
     let vr_system = match init_openvr() {
         Ok(s) => s,
         Err(e) => {
@@ -40,47 +31,33 @@ fn main() {
         }
     };
 
-    // ------------------------------------------------------------------
-    // 2. SteamVR is up and we are connected — fire the startup hook.
-    // ------------------------------------------------------------------
+    // Fire the startup hook once OpenVR is connected.
     on_steamvr_started();
 
-    // ------------------------------------------------------------------
-    // 4. Event loop — block until SteamVR sends a quit event.
-    // ------------------------------------------------------------------
+    // Block in the event loop until SteamVR sends a quit event.
     run_event_loop(vr_system);
 
-    // ------------------------------------------------------------------
-    // 5. Shut down OpenVR cleanly before exiting.
-    // ------------------------------------------------------------------
+    // Shut down OpenVR cleanly before exiting.
     unsafe { sys::VR_ShutdownInternal() };
     info!("[steamvr-companion] Exited cleanly.");
 }
 
-// ---------------------------------------------------------------------------
-// Startup hook — called once, right after a successful OpenVR connection.
-// Replace the tracing call with whatever you need to do on SteamVR launch.
-// ---------------------------------------------------------------------------
+/// Startup hook — called once, right after a successful `OpenVR` connection.
 fn on_steamvr_started() {
     info!("[steamvr-companion] >>> SteamVR has started! (on_steamvr_started hook)");
     // TODO: add your startup logic here.
     // Examples: spawn background threads, connect to hardware, load config …
 }
 
-// ---------------------------------------------------------------------------
-// Shutdown hook — called once, when SteamVR signals it is about to quit.
-// Replace the tracing call with your own teardown logic.
-// ---------------------------------------------------------------------------
+/// Shutdown hook — called once, when `SteamVR` signals it is about to quit.
 fn on_steamvr_shutdown() {
     info!("[steamvr-companion] >>> SteamVR is shutting down! (on_steamvr_shutdown hook)");
     // TODO: add your shutdown logic here.
     // Examples: save state, disconnect hardware, flush logs …
 }
 
-// ---------------------------------------------------------------------------
-// Initialise the OpenVR runtime.
-// Returns a raw pointer to IVRSystem (only used to call PollNextEvent on it).
-// ---------------------------------------------------------------------------
+/// Initialise the `OpenVR` runtime.
+/// Returns a raw pointer to `IVRSystem` (only used to call `PollNextEvent` on it).
 fn init_openvr() -> Result<*mut sys::VR_IVRSystem_FnTable, String> {
     let mut vr_error = sys::EVRInitError_VRInitError_None;
 
@@ -119,10 +96,8 @@ fn init_openvr() -> Result<*mut sys::VR_IVRSystem_FnTable, String> {
     Ok(ptr as *mut sys::VR_IVRSystem_FnTable)
 }
 
-// ---------------------------------------------------------------------------
-// Main event loop.  Polls OpenVR events at POLL_INTERVAL until a quit event
-// arrives, then calls the shutdown hook and returns.
-// ---------------------------------------------------------------------------
+/// Main event loop. Polls `OpenVR` events at `POLL_INTERVAL` until a quit event
+/// arrives, then calls the shutdown hook and returns.
 fn run_event_loop(vr_system: *mut sys::VR_IVRSystem_FnTable) {
     info!("[steamvr-companion] Entering event loop — waiting for SteamVR events...");
 
@@ -171,9 +146,7 @@ fn run_event_loop(vr_system: *mut sys::VR_IVRSystem_FnTable) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Helper: convert a VRInitError to a human-readable string.
-// ---------------------------------------------------------------------------
+/// Helper: convert a `VRInitError` to a human-readable string.
 fn vr_init_error_to_string(err: sys::EVRInitError) -> String {
     // SAFETY: VR_GetVRInitErrorAsEnglishDescription returns a static string.
     let ptr = unsafe { sys::VR_GetVRInitErrorAsEnglishDescription(err) };

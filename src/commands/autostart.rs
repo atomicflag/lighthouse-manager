@@ -6,10 +6,8 @@ use tracing::info;
 
 use crate::storage;
 
-// ---------------------------------------------------------------------------
-// Application key — must match the one in manifest.vrmanifest exactly.
+// Must match the one in manifest.vrmanifest exactly.
 // Valve's convention is "developer.AppName" in lower-snake-case.
-// ---------------------------------------------------------------------------
 const APP_KEY: &str = "io.atomicflag.lighthouse-manager";
 
 /// Enable `SteamVR` autostart for the lighthouse-manager-ovr binary.
@@ -126,7 +124,6 @@ pub fn disable() -> Result<()> {
     Ok(())
 }
 
-// ---------------------------------------------------------------------------
 /// RAII guard that shuts down `OpenVR` when dropped.
 struct OpenVrInit;
 
@@ -159,9 +156,7 @@ impl OpenVrInit {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Convert VRInitError to human-readable string.
-// ---------------------------------------------------------------------------
+// Convert VRInitError to a human-readable string.
 fn vr_init_error_to_string(err: sys::EVRInitError) -> String {
     let ptr = unsafe { sys::VR_GetVRInitErrorAsEnglishDescription(err) };
     if ptr.is_null() {
@@ -171,9 +166,7 @@ fn vr_init_error_to_string(err: sys::EVRInitError) -> String {
     unsafe { std::ffi::CStr::from_ptr(ptr).to_string_lossy().into_owned() }
 }
 
-// ---------------------------------------------------------------------------
 // Get the IVRApplications function table pointer.
-// ---------------------------------------------------------------------------
 fn get_vr_applications_table() -> Result<*mut sys::VR_IVRApplications_FnTable, anyhow::Error> {
     let iface = std::ffi::CString::new(sys::IVRApplications_Version).unwrap();
     let mut err = sys::EVRInitError_VRInitError_None;
@@ -187,18 +180,14 @@ fn get_vr_applications_table() -> Result<*mut sys::VR_IVRApplications_FnTable, a
     }
 }
 
-// ---------------------------------------------------------------------------
 // Path to manifest.vrmanifest inside the config local directory.
-// ---------------------------------------------------------------------------
 fn manifest_path() -> Result<PathBuf, anyhow::Error> {
     let dir = storage::config_local_dir().context("Could not determine config directory")?;
     Ok(dir.join("manifest.vrmanifest"))
 }
 
-// ---------------------------------------------------------------------------
 // Write the vrmanifest to disk if it doesn't already exist.
 // Uses the -ovr binary name, derived from the CLI executable's location.
-// ---------------------------------------------------------------------------
 fn write_manifest_if_missing(path: &PathBuf) -> Result<(), anyhow::Error> {
     if path.exists() {
         return Ok(()); // Already written on a previous run.
@@ -239,10 +228,8 @@ fn write_manifest_if_missing(path: &PathBuf) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-// ---------------------------------------------------------------------------
 // Construct the path to the -ovr binary by deriving it from the CLI exe.
 // Both executables are expected to live in the same directory.
-// ---------------------------------------------------------------------------
 fn ovr_binary_path() -> Result<PathBuf, anyhow::Error> {
     let cli_exe = std::env::current_exe().context("Could not determine current executable path")?;
 
