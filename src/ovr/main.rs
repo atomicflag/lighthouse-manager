@@ -1,3 +1,5 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use std::{thread, time::Duration, time::SystemTime};
 
 use lighthouse_manager::commands::power::{power_off, power_on};
@@ -106,9 +108,9 @@ fn run_event_loop(system: &openvr::System, _context: &openvr::Context) {
                 // SteamVR is quitting normally.
                 Event::Quit(_) => {
                     info!("Received VREvent_Quit.");
-                    on_steamvr_shutdown();
                     // Acknowledge the quit so SteamVR doesn't hang waiting for us.
                     system.acknowledge_quit_exiting();
+                    on_steamvr_shutdown();
                     return;
                 }
 
