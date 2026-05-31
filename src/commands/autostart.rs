@@ -1,10 +1,8 @@
-use anyhow::{Context, Result, anyhow};
-use openvr::{ApplicationType, init};
+use anyhow::{anyhow, Context, Result};
+use openvr::{init, ApplicationType};
 use std::fs;
 use std::path::PathBuf;
 use tracing::info;
-
-use crate::storage;
 
 // Must match the one in manifest.vrmanifest exactly.
 // Valve's convention is "developer.AppName" in lower-snake-case.
@@ -76,10 +74,13 @@ pub fn disable() -> Result<()> {
     Ok(())
 }
 
-// Path to manifest.vrmanifest inside the config local directory.
+// Path to manifest.vrmanifest next to the -ovr executable.
 fn manifest_path() -> Result<PathBuf> {
-    let dir = storage::config_local_dir().context("Could not determine config directory")?;
-    Ok(dir.join("manifest.vrmanifest"))
+    let exe = std::env::current_exe().context("Could not determine current executable path")?;
+    let parent = exe.parent().ok_or_else(|| {
+        anyhow::anyhow!("Could not determine parent directory of current executable")
+    })?;
+    Ok(parent.join("manifest.vrmanifest"))
 }
 
 // Write the vrmanifest to disk if it doesn't already exist.
