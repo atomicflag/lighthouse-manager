@@ -1,5 +1,5 @@
-use anyhow::{anyhow, Context, Result};
-use openvr::{init, ApplicationType};
+use anyhow::{Context, Result, anyhow};
+use openvr::{ApplicationType, init};
 use std::fs;
 use std::path::PathBuf;
 use tracing::info;

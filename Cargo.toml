@@ -2,6 +2,13 @@
 name = "lighthouse-manager"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+repository = "https://github.com/atomicflag/lighthouse-manager"
+keywords = ["lighthouse", "steamvr", "basestation"]
+categories = ["hardware-support"]
+readme = "README.md"
+description = "Control SteamVR Lighthouse base stations (V1 & V2) via Bluetooth LE"
+
 
 [[bin]]
 name = "lighthouse-manager"
