@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
+use serde_aux::prelude::bool_true;
 use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
@@ -55,6 +56,10 @@ pub struct AppSettings {
     pub lighthouses: Vec<Lighthouse>,
     #[serde(default)]
     pub autostart: Autostart,
+    /// When `true` (the default), power actions run on all managed lighthouses in parallel.
+    /// When `false`, they run sequentially.
+    #[serde(default = "bool_true")]
+    pub parallel_power: bool,
 }
 
 impl Default for AppSettings {
@@ -63,6 +68,7 @@ impl Default for AppSettings {
             version: 1,
             lighthouses: Vec::new(),
             autostart: Autostart::default(),
+            parallel_power: true,
         }
     }
 }
@@ -74,7 +80,8 @@ fn load_at(path: &PathBuf) -> Result<AppSettings> {
     }
     let content = fs::read_to_string(path).context("Failed to read settings")?;
     let settings: AppSettings =
-        jsonc_parser::parse_to_serde_value(&content, &jsonc_parser::ParseOptions::default()).context("Failed to parse settings JSONC")?;
+        jsonc_parser::parse_to_serde_value(&content, &jsonc_parser::ParseOptions::default())
+            .context("Failed to parse settings JSONC")?;
     Ok(settings)
 }
 
@@ -291,7 +298,9 @@ mod tests {
         };
 
         let json = serde_json::to_string_pretty(&settings).unwrap();
-        let restored: AppSettings = jsonc_parser::parse_to_serde_value(&json, &jsonc_parser::ParseOptions::default()).unwrap();
+        let restored: AppSettings =
+            jsonc_parser::parse_to_serde_value(&json, &jsonc_parser::ParseOptions::default())
+                .unwrap();
         assert_eq!(restored.version, 1);
         assert_eq!(restored.lighthouses.len(), 2);
     }

@@ -32,25 +32,24 @@ enum PowerAction {
     Sleep,
 }
 
-/// Load the database, collect managed lighthouses, and validate they are non-empty.
-pub(super) fn load_and_validate() -> Result<Vec<Lighthouse>> {
-    let db = storage::load()?;
-    let managed: Vec<Lighthouse> = storage::managed_lighthouses(&db)
+/// Validate that there are managed lighthouses; return them or an empty vec.
+pub(super) fn validate(settings: &storage::AppSettings) -> Vec<Lighthouse> {
+    let managed: Vec<Lighthouse> = storage::managed_lighthouses(settings)
         .into_iter()
         .cloned()
         .collect();
 
     if managed.is_empty() {
         info!("No managed lighthouses found. Mark stations as managed in the database first.");
-        return Ok(managed);
     }
 
-    Ok(managed)
+    managed
 }
 
-/// Execute a power action on all managed lighthouses in parallel.
+/// Execute a power action on all managed lighthouses (parallel or sequential based on config).
 async fn run_power_action(action: PowerAction) -> Result<()> {
-    let managed = load_and_validate()?;
+    let settings = storage::load()?;
+    let managed = validate(&settings);
 
     if managed.is_empty() {
         return Ok(());
@@ -86,49 +85,53 @@ async fn run_power_action(action: PowerAction) -> Result<()> {
         );
     }
 
-    execute_and_report(&adapter, managed, action).await?;
+    execute_and_report(&adapter, managed, action, settings.parallel_power).await?;
 
     Ok(())
 }
 
-/// Spawn parallel tasks for each lighthouse, join results, and report.
+/// Execute a power action on all managed lighthouses, either in parallel or sequentially.
 async fn execute_and_report(
     adapter: &bluetooth::Adapter,
     managed: Vec<Lighthouse>,
     action: PowerAction,
+    parallel: bool,
 ) -> Result<()> {
-    let mut tasks = Vec::new();
-
-    for lh in &managed {
-        let adapter_clone = adapter.clone();
-        let lh_for_task = lh.clone();
-
-        let task =
-            tokio::spawn(async move { send_action(&adapter_clone, &lh_for_task, action).await });
-
-        tasks.push(task);
-    }
-
-    let results = futures::future::join_all(tasks).await;
+    let results: Vec<Result<()>> = if parallel {
+        let mut tasks = Vec::new();
+        for lh in &managed {
+            let adapter_clone = adapter.clone();
+            let lh_for_task = lh.clone();
+            tasks.push(tokio::spawn(async move {
+                send_action(&adapter_clone, &lh_for_task, action).await
+            }));
+        }
+        futures::future::join_all(tasks)
+            .await
+            .into_iter()
+            .map(|r| match r {
+                Ok(Ok(())) => Ok(()),
+                Ok(Err(e)) => Err(e),
+                Err(e) => Err(anyhow::anyhow!("{e}")),
+            })
+            .collect()
+    } else {
+        let mut results = Vec::new();
+        for lh in &managed {
+            results.push(send_action(adapter, lh, action).await);
+        }
+        results
+    };
 
     let mut error_count = 0;
-
     for (i, result) in results.into_iter().enumerate() {
-        if i >= managed.len() {
-            continue;
-        }
-
         match result {
-            Ok(Ok(())) => {
+            Ok(()) => {
                 info!(device = %managed[i].name, "power action complete");
             }
-            Ok(Err(e)) => {
+            Err(e) => {
                 error_count += 1;
                 error!(device = %managed[i].name, error = %e, "power action failed");
-            }
-            Err(join_err) => {
-                error_count += 1;
-                error!(device = %managed[i].name, task_error = %join_err, "task panicked or was cancelled");
             }
         }
     }

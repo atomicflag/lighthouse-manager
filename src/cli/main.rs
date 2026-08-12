@@ -86,7 +86,7 @@ async fn main() -> Result<()> {
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(filter)),
         )
         .event_format(tracing_subscriber::fmt::format().with_target(false))
-        .with_ansi(std::io::stderr().is_terminal())
+        .with_ansi(std::io::stdout().is_terminal())
         .init();
 
     // Verify Bluetooth adapter is available (early check)

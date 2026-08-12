@@ -140,7 +140,9 @@ mod tests {
             ..Default::default()
         };
         let json = serde_json::to_string_pretty(&settings).unwrap();
-        let restored: storage::AppSettings = jsonc_parser::parse_to_serde_value(&json, &jsonc_parser::ParseOptions::default()).unwrap();
+        let restored: storage::AppSettings =
+            jsonc_parser::parse_to_serde_value(&json, &jsonc_parser::ParseOptions::default())
+                .unwrap();
         assert_eq!(restored.lighthouses, settings.lighthouses);
     }
 }

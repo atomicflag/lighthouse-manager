@@ -27,6 +27,7 @@ btleplug = "0.12"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
+serde-aux = { version = "4", default-features = false }
 serde_json = "1"
 jsonc-parser = { version = "0.33", features = ["serde"] }
 directories = "6"
