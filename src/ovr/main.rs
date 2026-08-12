@@ -18,6 +18,7 @@ fn main() {
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
         )
         .event_format(tracing_subscriber::fmt::format().with_target(false))
+        .with_ansi(false)
         .init();
 
     info!("Starting up...");
