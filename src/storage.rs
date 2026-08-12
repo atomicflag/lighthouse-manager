@@ -26,7 +26,7 @@ pub fn config_local_dir() -> Result<PathBuf> {
 /// Path to the JSON settings file, determined cross-platform via `directories`.
 fn config_path() -> Result<PathBuf> {
     let dir = config_local_dir()?;
-    Ok(dir.join("settings.json"))
+    Ok(dir.join("settings.jsonc"))
 }
 
 /// Autostart-related settings.
@@ -74,7 +74,7 @@ fn load_at(path: &PathBuf) -> Result<AppSettings> {
     }
     let content = fs::read_to_string(path).context("Failed to read settings")?;
     let settings: AppSettings =
-        serde_json::from_str(&content).context("Failed to parse settings JSON")?;
+        jsonc_parser::parse_to_serde_value(&content, &jsonc_parser::ParseOptions::default()).context("Failed to parse settings JSONC")?;
     Ok(settings)
 }
 
@@ -101,6 +101,9 @@ pub fn load() -> Result<AppSettings> {
 ///
 /// Returns an error if the config directory cannot be determined, the JSON cannot be serialized,
 /// or the file cannot be written.
+///
+/// Settings are written as plain JSON (a valid subset of JSONC); any existing comments
+/// in the file are not preserved on save.
 pub fn save(settings: &AppSettings) -> Result<()> {
     let path = config_path()?;
     save_at(&path, settings)
@@ -140,7 +143,7 @@ mod tests {
 
     fn test_settings_path() -> (PathBuf, tempfile::TempDir) {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("settings.json");
+        let path = dir.path().join("settings.jsonc");
         (path, dir)
     }
 
@@ -288,7 +291,7 @@ mod tests {
         };
 
         let json = serde_json::to_string_pretty(&settings).unwrap();
-        let restored: AppSettings = serde_json::from_str(&json).unwrap();
+        let restored: AppSettings = jsonc_parser::parse_to_serde_value(&json, &jsonc_parser::ParseOptions::default()).unwrap();
         assert_eq!(restored.version, 1);
         assert_eq!(restored.lighthouses.len(), 2);
     }
