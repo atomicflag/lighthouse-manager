@@ -51,9 +51,17 @@ All commands require a working Bluetooth adapter. Run with `-v` / `-vv` for debu
 
 ### Discover nearby Lighthouses
 
-Scans for BLE-advertising Lighthouse base stations and saves them to the local database (newly discovered units are marked *unmanaged* by default):
+Scans for BLE-advertising Lighthouse base stations and saves them to the local database (newly discovered units are marked *unmanaged* by default).
+V1 base stations don't advertise their full ID over Bluetooth, so it is read from SteamVR's `steamvr.vrsettings`. 
+Launch SteamVR once before running discovery.
+
+The file is looked up at `~/.steam/steam/config/steamvr.vrsettings`. 
+Another location can be configured using the `STEAM_VR_SETTINGS_PATH` environment variable.
 
 ```bash
+# Providing the path to the SteamVR settings
+STEAM_VR_SETTINGS_PATH=/path/to/steamvr.vrsettings lighthouse-manager discover
+
 # Default 10-second scan
 lighthouse-manager discover
 

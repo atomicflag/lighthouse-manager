@@ -12,6 +12,9 @@ use uuid::Uuid;
 
 use crate::lighthouse::Lighthouse;
 use crate::protocol;
+use crate::steam_vr_settings::get_vr_settings_path;
+use crate::steam_vr_settings::load_vr_settings;
+use crate::steam_vr_settings::parse_vr_settings;
 
 /// Discover nearby lighthouses by scanning BLE advertisements for a given duration.
 /// Filters results to only devices whose name starts with "HTC BS" or "LHB-".
@@ -47,6 +50,24 @@ pub async fn discover_lighthouses(adapter: &Adapter, timeout_secs: u64) -> Resul
 
     info!("Scan complete. Found {} raw devices", peripherals.len());
 
+    let path = get_vr_settings_path();
+    let vr_settings = match load_vr_settings().await {
+        Ok(json) => match parse_vr_settings(&json) {
+            Ok(s) => Some(s),
+            Err(e) => {
+                warn!(
+                    "Could not parse SteamVR settings at {}: {e}",
+                    path.display()
+                );
+                None
+            }
+        },
+        Err(e) => {
+            debug!("Could not read SteamVR settings at {}: {e}", path.display());
+            None
+        }
+    };
+
     // Filter for lighthouse name patterns
     let mut lighthouses = Vec::new();
     for peripheral in &peripherals {
@@ -54,15 +75,29 @@ pub async fn discover_lighthouses(adapter: &Adapter, timeout_secs: u64) -> Resul
         if let Some(name) = get_local_name(peripheral).await
             && is_lighthouse_name(&name)
         {
+            let id = vr_settings
+                .as_ref()
+                .and_then(|vr_settings| vr_settings.get_id_by_name(&name));
             let lh = Lighthouse {
                 name,
                 address: address_str.clone(),
-                id: None, // Will be filled from DB if available
+                id,
                 managed: false,
             };
             debug!("Discovered lighthouse: {} ({})", lh.name, address_str);
             lighthouses.push(lh);
         }
+    }
+
+    if lighthouses
+        .iter()
+        .any(|l| l.id.is_none() && l.name.starts_with("HTC BS"))
+    {
+        warn!(
+            "Could not determine the ID of one or more V1 base stations. Start SteamVR \
+         at least once, point STEAM_VR_SETTINGS_PATH at your steamvr.vrsettings, \
+         or set the IDs manually in the configuration file."
+        );
     }
 
     info!("Found {} Lighthouse(s)", lighthouses.len());
